@@ -17,7 +17,7 @@ type ProxyHandler struct {
     auth AuthProvider
     upstream string
     logger *CondLogger
-    httpclient *http.Client
+    httptransport http.RoundTripper
 }
 
 func NewProxyHandler(upstream string, auth AuthProvider, logger *CondLogger) *ProxyHandler {
@@ -25,14 +25,14 @@ func NewProxyHandler(upstream string, auth AuthProvider, logger *CondLogger) *Pr
     if err != nil {
         panic(err)
     }
-	httpclient := &http.Client{
-        Transport: &http.Transport{
-            Proxy: http.ProxyURL(proxyurl)}}
+	httptransport := &http.Transport{
+        Proxy: http.ProxyURL(proxyurl),
+    }
     return &ProxyHandler{
         auth: auth,
         upstream: upstream,
         logger: logger,
-        httpclient: httpclient,
+        httptransport: httptransport,
     }
 }
 
@@ -77,7 +77,7 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
     } else {
         req.RequestURI = ""
         delHopHeaders(req.Header)
-        resp, err := s.httpclient.Do(req)
+        resp, err := s.httptransport.RoundTrip(req)
         if err != nil {
             s.logger.Error("HTTP fetch error: %v", err)
             http.Error(wr, "Server Error", http.StatusInternalServerError)
