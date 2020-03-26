@@ -1,8 +1,8 @@
 # hola-proxy
 
-Standalone Hola proxy client. Just run it and it'll start plain HTTP proxy server forwarding traffic via Hola proxies of your choice.
+Standalone Hola proxy client. Just run it and it'll start plain HTTP proxy server forwarding traffic via Hola proxies of your choice. By default application listens port on 127.0.0.1:8080.
 
-Application is capable to forward traffic via proxies in datacenters (`-proxy-type direct`, default) or via peer proxies on residental IPs (consumer ISP) in that country (`-proxy-type peer`).
+Application is capable to forward traffic via proxies in datacenters (flag `-proxy-type direct`, default) or via peer proxies on residental IPs (consumer ISP) in that country (flag `-proxy-type peer`).
 
 ## Features
 
