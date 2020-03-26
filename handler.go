@@ -84,7 +84,7 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
             return
         }
         defer resp.Body.Close()
-        s.logger.Info("Response: %v %v", req.RemoteAddr, resp.Status)
+        s.logger.Info("%v %v %v %v", req.RemoteAddr, req.Method, req.URL, resp.Status)
         delHopHeaders(resp.Header)
         copyHeader(wr.Header(), resp.Header)
         wr.WriteHeader(resp.StatusCode)
