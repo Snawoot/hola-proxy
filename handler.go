@@ -38,8 +38,8 @@ func NewProxyHandler(upstream string, auth AuthProvider, logger *CondLogger) *Pr
 
 func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	s.logger.Info("Request: %v %v %v", req.RemoteAddr, req.Method, req.URL)
+    req.Header.Set("Proxy-Authorization", s.auth())
     if strings.ToUpper(req.Method) == "CONNECT" {
-        req.Header.Set("Proxy-Authorization", s.auth())
         rawreq, err := httputil.DumpRequest(req, false)
         if err != nil {
             s.logger.Error("Can't dump request: %v", err)
