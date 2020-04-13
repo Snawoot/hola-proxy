@@ -42,6 +42,7 @@ type CLIArgs struct {
     verbosity int
     timeout, rotate time.Duration
     proxy_type string
+    resolver string
 }
 
 
@@ -57,6 +58,9 @@ func parse_args() CLIArgs {
     flag.DurationVar(&args.timeout, "timeout", 10 * time.Second, "timeout for network operations")
     flag.DurationVar(&args.rotate, "rotate", 1 * time.Hour, "rotate user ID once per given period")
     flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or peer")
+    flag.StringVar(&args.resolver, "resolver", "https://cloudflare-dns.com/dns-query",
+                   "DNS/DoH/DoT resolver to workaround Hola blocked hosts. " +
+                   "See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
     flag.Parse()
     if args.country == "" {
         arg_fail("Country can't be empty string.")
@@ -88,9 +92,16 @@ func main() {
     proxyLogger := NewCondLogger(log.New(logWriter, "PROXY   : ",
                                 log.LstdFlags | log.Lshortfile),
                                 args.verbosity)
+    mainLogger.Info("Constructing fallback DNS upstream...")
+    resolver, err := NewResolver(args.resolver, args.timeout)
+    if err != nil {
+        mainLogger.Critical("Unable to instantiate DNS resolver: %v", err)
+        os.Exit(6)
+    }
     mainLogger.Info("Initializing configuration provider...")
     auth, tunnels, err := CredService(args.rotate, args.timeout, args.country, credLogger)
     if err != nil {
+        mainLogger.Critical("Unable to instantiate credential service: %v", err)
         os.Exit(4)
     }
     endpoint, err := get_endpoint(tunnels, args.proxy_type)
@@ -99,7 +110,7 @@ func main() {
         os.Exit(5)
     }
     mainLogger.Info("Starting proxy server...")
-    handler := NewProxyHandler(endpoint, auth, proxyLogger)
+    handler := NewProxyHandler(endpoint, auth, resolver, proxyLogger)
     err = http.ListenAndServe(args.bind_address, handler)
     mainLogger.Critical("Server terminated with a reason: %v", err)
     mainLogger.Info("Shutting down...")

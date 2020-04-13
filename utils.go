@@ -14,6 +14,8 @@ import (
     "strings"
     "strconv"
     "net/http"
+    "net/url"
+    "bufio"
 )
 
 func basic_auth_header(login, password string) string {
@@ -115,6 +117,7 @@ var hopHeaders = []string{
 	"Connection",
 	"Keep-Alive",
 	"Proxy-Authenticate",
+	"Proxy-Connection",
 	"Te", // canonicalized version of "TE"
 	"Trailers",
 	"Transfer-Encoding",
@@ -135,3 +138,94 @@ func delHopHeaders(header http.Header) {
 	}
 }
 
+func hijack(hijackable interface{}) (net.Conn, *bufio.ReadWriter, error) {
+    hj, ok := hijackable.(http.Hijacker)
+    if !ok {
+        return nil, nil, errors.New("Connection doesn't support hijacking")
+    }
+    conn, rw, err := hj.Hijack()
+    if err != nil {
+        return nil, nil, err
+    }
+    var emptytime time.Time
+    err = conn.SetDeadline(emptytime)
+    if err != nil {
+        conn.Close()
+        return nil, nil, err
+    }
+    return conn, rw, nil
+}
+
+func rewriteConnectReq(req *http.Request, resolver *Resolver) error {
+    origHost := req.Host
+    origAddr, origPort, err := net.SplitHostPort(origHost)
+    if err == nil {
+        origHost = origAddr
+    }
+    addrs := resolver.Resolve(origHost)
+    if len(addrs) == 0 {
+        return errors.New("Can't resolve host")
+    }
+    if origPort == "" {
+        req.URL.Host = addrs[0]
+        req.Host = addrs[0]
+        req.RequestURI = addrs[0]
+    } else {
+        req.URL.Host = net.JoinHostPort(addrs[0], origPort)
+        req.Host = net.JoinHostPort(addrs[0], origPort)
+        req.RequestURI = net.JoinHostPort(addrs[0], origPort)
+    }
+    return nil
+}
+
+func rewriteReq(req *http.Request, resolver *Resolver) error {
+    origHost := req.URL.Host
+    origAddr, origPort, err := net.SplitHostPort(origHost)
+    if err == nil {
+        origHost = origAddr
+    }
+    addrs := resolver.Resolve(origHost)
+    if len(addrs) == 0 {
+        return errors.New("Can't resolve host")
+    }
+    if origPort == "" {
+        req.URL.Host = addrs[0]
+        req.Host = addrs[0]
+    } else {
+        req.URL.Host = net.JoinHostPort(addrs[0], origPort)
+        req.Host = net.JoinHostPort(addrs[0], origPort)
+    }
+    req.Header.Set("Host", origHost)
+    return nil
+}
+
+func makeConnReq(uri string, resolver *Resolver) (*http.Request, error) {
+    parsed_url, err := url.Parse(uri)
+    if err != nil {
+        return nil, err
+    }
+    origAddr, origPort, err := net.SplitHostPort(parsed_url.Host)
+    if err != nil {
+        origAddr = parsed_url.Host
+        switch strings.ToLower(parsed_url.Scheme) {
+        case "https":
+            origPort = "443"
+        case "http":
+            origPort = "80"
+        default:
+            return nil, errors.New("Unknown scheme")
+        }
+    }
+    addrs := resolver.Resolve(origAddr)
+    if len(addrs) == 0 {
+        return nil, errors.New("Can't resolve host")
+    }
+    new_uri := net.JoinHostPort(addrs[0], origPort)
+    req, err := http.NewRequest("CONNECT", "http://" + new_uri, nil)
+    if err != nil {
+        return nil, err
+    }
+    req.RequestURI = new_uri
+    req.Host = new_uri
+    return req, nil
+}
