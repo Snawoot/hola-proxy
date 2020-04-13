@@ -159,7 +159,6 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
             }
             proxyReq.Header.Set("Proxy-Authorization", s.auth())
             rawreq, _ := httputil.DumpRequest(proxyReq, false)
-            s.logger.Debug("Rewritten request: %s", string(rawreq))
 
             // Prepare upstream TLS conn
             conn, err := tls.Dial("tcp", s.upstream, nil)
@@ -172,6 +171,11 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 
             // Send proxy request
             _, err = conn.Write(rawreq)
+            if err != nil {
+                s.logger.Error("Can't write tls upstream: %v", err)
+                http.Error(wr, "Can't write tls upstream", http.StatusBadGateway)
+                return
+            }
 
             // Read proxy response
             bufrd := bufio.NewReader(conn)
@@ -191,8 +195,12 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
             orig_req.RequestURI = ""
             orig_req.Header.Set("Connection", "close")
             rawreq, _ = httputil.DumpRequest(orig_req, false)
-            s.logger.Debug("Tunneled request: %s", string(rawreq))
             _, err = conn.Write(rawreq)
+            if err != nil {
+                s.logger.Error("Can't write tls upstream: %v", err)
+                http.Error(wr, "Can't write tls upstream", http.StatusBadGateway)
+                return
+            }
 
             // Read tunneled response
             resp, err = http.ReadResponse(bufrd, orig_req)
