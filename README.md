@@ -14,10 +14,10 @@ Application is capable to forward traffic via proxies in datacenters (flag `-pro
 
 Pre-built binaries available on [releases](https://github.com/Snawoot/hola-proxy/releases/latest) page.
 
-Alternatively, you may install hola-proxy from source:
+Alternatively, you may install hola-proxy from source. Run within source directory
 
 ```
-go get github.com/Snawoot/hola-proxy
+go install
 ```
 
 ## Usage
@@ -111,10 +111,13 @@ Usage of /home/user/go/bin/hola-proxy:
     	output proxy list and exit
   -proxy-type string
     	proxy type: direct or peer (default "direct")
+  -resolver string
+    	DNS/DoH/DoT resolver to workaround Hola blocked hosts. See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format. (default "https://cloudflare-dns.com/dns-query")
   -rotate duration
     	rotate user ID once per given period (default 1h0m0s)
   -timeout duration
     	timeout for network operations (default 10s)
   -verbosity int
     	logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20)
+
 ```
