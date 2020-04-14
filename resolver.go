@@ -74,8 +74,9 @@ func (r *Resolver) ResolveAAAA(domain string) []string {
 }
 
 func (r *Resolver) Resolve(domain string) []string {
-    res := make([]string, 0)
-    res = append(res, r.ResolveA(domain)...)
-    res = append(res, r.ResolveAAAA(domain)...)
+    res := r.ResolveA(domain)
+    if len(res) == 0 {
+        res = r.ResolveAAAA(domain)
+    }
     return res
 }

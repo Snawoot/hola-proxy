@@ -154,7 +154,7 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
             proxyReq, err := makeConnReq(orig_req.RequestURI, s.resolver)
             if err != nil {
                 s.logger.Error("Can't rewrite request: %v", err)
-                http.Error(wr, "Can't rewrite request", http.StatusInternalServerError)
+                http.Error(wr, "Can't rewrite request", http.StatusBadGateway)
                 return
             }
             proxyReq.Header.Set("Proxy-Authorization", s.auth())
