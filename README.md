@@ -20,6 +20,17 @@ Alternatively, you may install hola-proxy from source. Run within source directo
 go install
 ```
 
+Docker image is available as well. Here is an example for running proxy via DE as a background service:
+
+```sh
+docker run -d --rm \
+    --security-opt no-new-privileges \
+    -p 127.0.0.1:8080:8080 \
+    --restart unless-stopped \
+    --name hola-proxy \
+    yarmak/hola-proxy -country de
+```
+
 ## Usage
 
 List available countries:

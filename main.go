@@ -71,13 +71,13 @@ func parse_args() CLIArgs {
     return args
 }
 
-func main() {
+func run() int {
     args := parse_args()
     if args.list_countries {
-        os.Exit(print_countries(args.timeout))
+        return print_countries(args.timeout)
     }
     if args.list_proxies {
-        os.Exit(print_proxies(args.country, args.limit, args.timeout))
+        return print_proxies(args.country, args.limit, args.timeout)
     }
 
     logWriter := NewLogWriter(os.Stderr)
@@ -96,22 +96,29 @@ func main() {
     resolver, err := NewResolver(args.resolver, args.timeout)
     if err != nil {
         mainLogger.Critical("Unable to instantiate DNS resolver: %v", err)
-        os.Exit(6)
+        return 6
     }
     mainLogger.Info("Initializing configuration provider...")
     auth, tunnels, err := CredService(args.rotate, args.timeout, args.country, credLogger)
     if err != nil {
         mainLogger.Critical("Unable to instantiate credential service: %v", err)
-        os.Exit(4)
+        logWriter.Close()
+        return 4
     }
     endpoint, err := get_endpoint(tunnels, args.proxy_type)
     if err != nil {
         mainLogger.Critical("Unable to determine proxy endpoint: %v", err)
-        os.Exit(5)
+        logWriter.Close()
+        return 5
     }
     mainLogger.Info("Starting proxy server...")
     handler := NewProxyHandler(endpoint, auth, resolver, proxyLogger)
     err = http.ListenAndServe(args.bind_address, handler)
     mainLogger.Critical("Server terminated with a reason: %v", err)
     mainLogger.Info("Shutting down...")
+    return 0
+}
+
+func main() {
+    os.Exit(run())
 }
