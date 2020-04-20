@@ -19,3 +19,6 @@ parts:
 apps:
   hola-proxy:
     command: bin/hola-proxy
+    plugs:
+      - network
+      - network-bind
