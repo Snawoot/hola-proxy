@@ -1,5 +1,7 @@
 # hola-proxy
 
+[![hola-proxy](https://snapcraft.io//hola-proxy/badge.svg)](https://snapcraft.io/hola-proxy)
+
 Standalone Hola proxy client. Just run it and it'll start plain HTTP proxy server forwarding traffic via Hola proxies of your choice. By default application listens port on 127.0.0.1:8080.
 
 Application is capable to forward traffic via proxies in datacenters (flag `-proxy-type direct`, default) or via peer proxies on residental IPs (consumer ISP) in that country (flag `-proxy-type peer`).
@@ -12,13 +14,19 @@ Application is capable to forward traffic via proxies in datacenters (flag `-pro
 
 ## Installation
 
+#### Binary download
+
 Pre-built binaries available on [releases](https://github.com/Snawoot/hola-proxy/releases/latest) page.
+
+#### From source
 
 Alternatively, you may install hola-proxy from source. Run within source directory
 
 ```
 go install
 ```
+
+#### Docker
 
 Docker image is available as well. Here is an example for running proxy via DE as a background service:
 
@@ -29,6 +37,14 @@ docker run -d \
     --restart unless-stopped \
     --name hola-proxy \
     yarmak/hola-proxy -country de
+```
+
+#### Snap Store
+
+[![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/hola-proxy)
+
+```bash
+sudo snap install hola-proxy
 ```
 
 ## Usage
