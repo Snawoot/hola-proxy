@@ -111,6 +111,7 @@ func run() int {
         logWriter.Close()
         return 5
     }
+    mainLogger.Info("Endpoint: %s", endpoint)
     mainLogger.Info("Starting proxy server...")
     handler := NewProxyHandler(endpoint, auth, resolver, proxyLogger)
     err = http.ListenAndServe(args.bind_address, handler)
