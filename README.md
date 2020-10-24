@@ -19,6 +19,14 @@ You can say thanks to the author by donations to these wallets:
 
 ---
 
+## Mirrors
+
+IPFS git mirror:
+
+```
+git clone https://ipfs.io/ipns/k51qzi5uqu5dkrgx0hozpy1tlggw5o0whtquyrjlc6pprhvbmczr6qtj4ocrv0 hola-proxy
+```
+
 ## Features
 
 * Cross-platform (Windows/Mac OS/Linux/Android (via shell)/\*BSD)
