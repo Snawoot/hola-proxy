@@ -52,7 +52,7 @@ func parse_args() CLIArgs {
     flag.BoolVar(&args.list_countries, "list-countries", false, "list available countries and exit")
     flag.BoolVar(&args.list_proxies, "list-proxies", false, "output proxy list and exit")
     flag.UintVar(&args.limit, "limit", 3, "amount of proxies in retrieved list")
-    flag.StringVar(&args.bind_address, "bind-address", "127.0.0.1:8081", "HTTP proxy listen address")
+    flag.StringVar(&args.bind_address, "bind-address", "127.0.0.1:8080", "HTTP proxy listen address")
     flag.IntVar(&args.verbosity, "verbosity", 20, "logging verbosity " +
             "(10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical)")
     flag.DurationVar(&args.timeout, "timeout", 10 * time.Second, "timeout for network operations")
