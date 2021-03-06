@@ -36,7 +36,7 @@ func arg_fail(msg string) {
 
 type CLIArgs struct {
     country string
-    list_countries, list_proxies bool
+    list_countries, list_proxies, use_trial bool
     limit uint
     bind_address string
     verbosity int
@@ -52,18 +52,22 @@ func parse_args() CLIArgs {
     flag.BoolVar(&args.list_countries, "list-countries", false, "list available countries and exit")
     flag.BoolVar(&args.list_proxies, "list-proxies", false, "output proxy list and exit")
     flag.UintVar(&args.limit, "limit", 3, "amount of proxies in retrieved list")
-    flag.StringVar(&args.bind_address, "bind-address", "127.0.0.1:8080", "HTTP proxy listen address")
+    flag.StringVar(&args.bind_address, "bind-address", "127.0.0.1:8081", "HTTP proxy listen address")
     flag.IntVar(&args.verbosity, "verbosity", 20, "logging verbosity " +
             "(10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical)")
     flag.DurationVar(&args.timeout, "timeout", 10 * time.Second, "timeout for network operations")
     flag.DurationVar(&args.rotate, "rotate", 1 * time.Hour, "rotate user ID once per given period")
-    flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or peer")
+    flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or peer or lum")
     flag.StringVar(&args.resolver, "resolver", "https://cloudflare-dns.com/dns-query",
                    "DNS/DoH/DoT resolver to workaround Hola blocked hosts. " +
                    "See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
+    flag.BoolVar(&args.use_trial, "use-trial", false, "use trial ports instead of regular ports")
     flag.Parse()
     if args.country == "" {
         arg_fail("Country can't be empty string.")
+    }
+    if args.proxy_type == "" {
+        arg_fail("Proxy type can't be an empty string.")
     }
     if args.list_countries && args.list_proxies {
         arg_fail("list-countries and list-proxies flags are mutually exclusive")
@@ -77,7 +81,7 @@ func run() int {
         return print_countries(args.timeout)
     }
     if args.list_proxies {
-        return print_proxies(args.country, args.limit, args.timeout)
+        return print_proxies(args.country, args.proxy_type, args.limit, args.timeout)
     }
 
     logWriter := NewLogWriter(os.Stderr)
@@ -99,13 +103,13 @@ func run() int {
         return 6
     }
     mainLogger.Info("Initializing configuration provider...")
-    auth, tunnels, err := CredService(args.rotate, args.timeout, args.country, credLogger)
+    auth, tunnels, err := CredService(args.rotate, args.timeout, args.country, args.proxy_type, credLogger)
     if err != nil {
         mainLogger.Critical("Unable to instantiate credential service: %v", err)
         logWriter.Close()
         return 4
     }
-    endpoint, err := get_endpoint(tunnels, args.proxy_type)
+    endpoint, err := get_endpoint(tunnels, args.proxy_type, args.use_trial)
     if err != nil {
         mainLogger.Critical("Unable to determine proxy endpoint: %v", err)
         logWriter.Close()

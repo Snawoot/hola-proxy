@@ -11,10 +11,11 @@ import (
     "bytes"
     "strconv"
     "math/rand"
+    "github.com/campoy/unique"
 )
 
-const USER_AGENT = "Mozilla/5.0 (X11; Fedora; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"
-const EXT_VER = "1.164.641"
+const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+const EXT_VER = "1.181.350"
 const EXT_BROWSER = "chrome"
 const PRODUCT = "cws"
 const CCGI_URL = "https://client.hola.org/client_cgi/"
@@ -96,6 +97,13 @@ func VPNCountries(ctx context.Context) (res CountryList, err error) {
         return nil, err
     }
     err = json.Unmarshal(data, &res)
+    for _, a := range res {
+        if a == "uk" {
+            res = append(res, "gb")
+        }
+    }
+    less := func(i, j int) bool { return res[i] < res[j] }
+    unique.Slice(&res, less)
     return
 }
 
@@ -118,10 +126,17 @@ func zgettunnels(ctx context.Context,
                  user_uuid string,
                  session_key int64,
                  country string,
+                 proxy_type string,
                  limit uint) (res *ZGetTunnelsResponse, reterr error) {
     var tunnels ZGetTunnelsResponse
     params := make(url.Values)
-    params.Add("country", country)
+    if proxy_type == "lum" {
+        params.Add("country", country + ".pool_lum_" + country + "_shared")
+    } else if proxy_type == "peer" {
+    	params.Add("country", country + ".peer")
+    } else {
+    	params.Add("country", country)
+    }
     params.Add("limit", strconv.FormatInt(int64(limit), 10))
     params.Add("ping_id", strconv.FormatFloat(rand.Float64(), 'f', -1, 64))
     params.Add("ext_ver", EXT_VER)
@@ -142,6 +157,7 @@ func zgettunnels(ctx context.Context,
 
 func Tunnels(ctx context.Context,
              country string,
+             proxy_type string,
              limit uint) (res *ZGetTunnelsResponse, user_uuid string, reterr error) {
     u := uuid.New()
     user_uuid = hex.EncodeToString(u[:])
@@ -150,6 +166,6 @@ func Tunnels(ctx context.Context,
         reterr = err
         return
     }
-    res, reterr = zgettunnels(ctx, user_uuid, initres.Key, country, limit)
+    res, reterr = zgettunnels(ctx, user_uuid, initres.Key, country, proxy_type, limit)
     return
 }

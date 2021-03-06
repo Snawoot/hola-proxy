@@ -2,7 +2,7 @@
 
 [![hola-proxy](https://snapcraft.io//hola-proxy/badge.svg)](https://snapcraft.io/hola-proxy)
 
-Standalone Hola proxy client. Just run it and it'll start plain HTTP proxy server forwarding traffic via Hola proxies of your choice. By default application listens port on 127.0.0.1:8080.
+Standalone Hola proxy client. Just run it and it'll start plain HTTP proxy server forwarding traffic via Hola proxies of your choice. By default application listens port on 127.0.0.1:8081.
 
 Application is capable to forward traffic via proxies in datacenters (flag `-proxy-type direct`, default) or via peer proxies on residental IPs (consumer ISP) in that country (flag `-proxy-type peer`).
 
@@ -54,7 +54,7 @@ Docker image is available as well. Here is an example for running proxy via DE a
 ```sh
 docker run -d \
     --security-opt no-new-privileges \
-    -p 127.0.0.1:8080:8080 \
+    -p 127.0.0.1:8081:8081 \
     --restart unless-stopped \
     --name hola-proxy \
     yarmak/hola-proxy -country de
@@ -148,7 +148,7 @@ zagent248.hola.org,165.22.65.3,22222,22223,digitalocean
 $ ~/go/bin/hola-proxy -h
 Usage of /home/user/go/bin/hola-proxy:
   -bind-address string
-    	HTTP proxy listen address (default "127.0.0.1:8080")
+    	HTTP proxy listen address (default "127.0.0.1:8081")
   -country string
     	desired proxy location (default "us")
   -limit uint

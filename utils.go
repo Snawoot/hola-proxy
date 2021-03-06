@@ -62,9 +62,9 @@ func print_countries(timeout time.Duration) int {
     return 0
 }
 
-func print_proxies(country string, limit uint, timeout time.Duration) int {
+func print_proxies(country string, proxy_type string, limit uint, timeout time.Duration) int {
     ctx, _ := context.WithTimeout(context.Background(), timeout)
-    tunnels, user_uuid, err := Tunnels(ctx, country, limit)
+    tunnels, user_uuid, err := Tunnels(ctx, country, proxy_type, limit)
     if err != nil {
         fmt.Fprintf(os.Stderr, "Error: %v\n", err)
         return 3
@@ -77,13 +77,16 @@ func print_proxies(country string, limit uint, timeout time.Duration) int {
     fmt.Println("Proxy-Authorization:",
                 basic_auth_header(login, password))
     fmt.Println("")
-    wr.Write([]string{"Host", "IP address", "Direct port", "Peer port", "Vendor"})
+    wr.Write([]string{"host", "ip_address", "direct", "peer", "hola", "trial", "trial_peer", "vendor"})
     for host, ip := range tunnels.IPList {
         if (PROTOCOL_WHITELIST[tunnels.Protocol[host]]) {
             wr.Write([]string{host,
                               ip,
                               strconv.FormatUint(uint64(tunnels.Port.Direct), 10),
                               strconv.FormatUint(uint64(tunnels.Port.Peer), 10),
+                              strconv.FormatUint(uint64(tunnels.Port.Hola), 10),
+                              strconv.FormatUint(uint64(tunnels.Port.Trial), 10),
+                              strconv.FormatUint(uint64(tunnels.Port.TrialPeer), 10),
                               tunnels.Vendor[host]})
         }
     }
@@ -91,7 +94,7 @@ func print_proxies(country string, limit uint, timeout time.Duration) int {
     return 0
 }
 
-func get_endpoint(tunnels *ZGetTunnelsResponse, typ string) (string, error) {
+func get_endpoint(tunnels *ZGetTunnelsResponse, typ string, trial bool) (string, error) {
     var hostname string
     for k, _ := range tunnels.IPList {
         hostname = k
@@ -102,9 +105,17 @@ func get_endpoint(tunnels *ZGetTunnelsResponse, typ string) (string, error) {
     }
     var port uint16
     if typ == "direct" {
-        port = tunnels.Port.Direct
-    } else if typ == "peer" {
-        port = tunnels.Port.Peer
+        if trial {
+            port = tunnels.Port.Trial
+        } else {
+            port = tunnels.Port.Direct
+        }
+    } else if typ == "peer" || typ == "lum" {
+        if trial {
+            port = tunnels.Port.TrialPeer
+        } else {
+            port = tunnels.Port.Peer
+        }
     } else {
         return "", errors.New("Unsupported port type")
     }
