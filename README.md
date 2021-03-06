@@ -90,8 +90,10 @@ dk - Denmark
 es - Spain
 fi - Finland
 fr - France
+gb - United Kingdom (Great Britain)
 gr - Greece
 hk - Hong Kong
+hr - Croatia
 hu - Hungary
 id - Indonesia
 ie - Ireland
