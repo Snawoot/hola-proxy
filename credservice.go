@@ -11,6 +11,7 @@ const API_CALL_ATTEMPTS = 3
 
 func CredService(interval, timeout time.Duration,
                  country string,
+                 proxytype string,
                  logger *CondLogger) (auth AuthProvider,
                                       tunnels *ZGetTunnelsResponse,
                                       err error) {
@@ -25,7 +26,7 @@ func CredService(interval, timeout time.Duration,
 
     for i := 0; i < API_CALL_ATTEMPTS ; i++ {
         ctx, _ := context.WithTimeout(context.Background(), timeout)
-        tunnels, user_uuid, err = Tunnels(ctx, country, DEFAULT_LIST_LIMIT)
+        tunnels, user_uuid, err = Tunnels(ctx, country, proxytype, DEFAULT_LIST_LIMIT)
         if err == nil {
             break
         }
@@ -49,7 +50,7 @@ func CredService(interval, timeout time.Duration,
             logger.Info("Rotating credentials...")
             for i := 0; i < API_CALL_ATTEMPTS ; i++ {
                 ctx, _ := context.WithTimeout(context.Background(), timeout)
-                tuns, user_uuid, err = Tunnels(ctx, country, DEFAULT_LIST_LIMIT)
+                tuns, user_uuid, err = Tunnels(ctx, country, proxytype, DEFAULT_LIST_LIMIT)
                 if err == nil {
                     break
                 }

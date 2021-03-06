@@ -90,8 +90,10 @@ dk - Denmark
 es - Spain
 fi - Finland
 fr - France
+gb - United Kingdom (Great Britain)
 gr - Greece
 hk - Hong Kong
+hr - Croatia
 hu - Hungary
 id - Indonesia
 ie - Ireland
@@ -125,21 +127,21 @@ $ ~/go/bin/hola-proxy -country de
 Or run proxy on residental IP:
 
 ```
-$ ~/go/bin/hola-proxy -country de -proxy-type peer
+$ ~/go/bin/hola-proxy -country de -proxy-type lum
 ```
 
 Also it is possible to export proxy addresses and credentials:
 
 ```
 $ ~/go/bin/hola-proxy -country de -list-proxies -limit 3
-Login: user-uuid-f4c2c3a8657640048e7243a807867d52
-Password: e194c4f457e0
-Proxy-Authorization: basic dXNlci11dWlkLWY0YzJjM2E4NjU3NjQwMDQ4ZTcyNDNhODA3ODY3ZDUyOmUxOTRjNGY0NTdlMA==
+Login: user-uuid-0a67c797b3214cbdb432b089c4b801cd
+Password: cd123c465901
+Proxy-Authorization: basic dXNlci11dWlkLTBhNjdjNzk3YjMyMTRjYmRiNDMyYjA4OWM0YjgwMWNkOmNkMTIzYzQ2NTkwMQ==
 
-Host,IP address,Direct port,Peer port,Vendor
-zagent90.hola.org,185.72.246.203,22222,22223,nqhost
-zagent249.hola.org,165.22.80.107,22222,22223,digitalocean
-zagent248.hola.org,165.22.65.3,22222,22223,digitalocean
+host,ip_address,direct,peer,hola,trial,trial_peer,vendor
+zagent783.hola.org,165.22.22.6,22222,22223,22224,22225,22226,digitalocean
+zagent830.hola.org,104.248.24.64,22222,22223,22224,22225,22226,digitalocean
+zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 ```
 
 ## Synopsis
@@ -158,14 +160,15 @@ Usage of /home/user/go/bin/hola-proxy:
   -list-proxies
     	output proxy list and exit
   -proxy-type string
-    	proxy type: direct or peer (default "direct")
+    	proxy type: direct or peer or lum (default "direct")
   -resolver string
     	DNS/DoH/DoT resolver to workaround Hola blocked hosts. See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format. (default "https://cloudflare-dns.com/dns-query")
   -rotate duration
     	rotate user ID once per given period (default 1h0m0s)
   -timeout duration
     	timeout for network operations (default 10s)
+  -use-trial
+    	use trial ports instead of regular ports
   -verbosity int
     	logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20)
-
 ```
