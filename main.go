@@ -63,7 +63,7 @@ func parse_args() CLIArgs {
 	flag.StringVar(&args.resolver, "resolver", "https://cloudflare-dns.com/dns-query",
 		"DNS/DoH/DoT resolver to workaround Hola blocked hosts. "+
 			"See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
-	flag.BoolVar(&args.use_trial, "use-trial", true, "use regular ports instead of trial ports") // would be nice to not show in help page
+	flag.BoolVar(&args.use_trial, "use-trial", true, "use trial ports instead of regular ports") // would be nice to not show in help page
 	flag.Parse()
 	if args.country == "" {
 		arg_fail("Country can't be empty string.")
