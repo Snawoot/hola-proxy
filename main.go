@@ -57,7 +57,7 @@ func parse_args() CLIArgs {
             "(10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical)")
     flag.DurationVar(&args.timeout, "timeout", 10 * time.Second, "timeout for network operations")
     flag.DurationVar(&args.rotate, "rotate", 1 * time.Hour, "rotate user ID once per given period")
-    flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or peer or lum")
+    flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or peer or lum or pool")
     flag.StringVar(&args.resolver, "resolver", "https://cloudflare-dns.com/dns-query",
                    "DNS/DoH/DoT resolver to workaround Hola blocked hosts. " +
                    "See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
