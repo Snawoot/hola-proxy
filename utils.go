@@ -104,7 +104,7 @@ func get_endpoint(tunnels *ZGetTunnelsResponse, typ string, trial bool) (string,
         return "", errors.New("No tunnels found in API response")
     }
     var port uint16
-    if typ == "direct" || typ == "lum" {
+    if typ == "direct" || typ == "lum" || typ == "pool" {
         if trial {
             port = tunnels.Port.Trial
         } else {

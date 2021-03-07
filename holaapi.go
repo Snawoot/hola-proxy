@@ -133,7 +133,10 @@ func zgettunnels(ctx context.Context,
     if proxy_type == "lum" {
         params.Add("country", country + ".pool_lum_" + country + "_shared")
     } else if proxy_type == "peer" {
-    	params.Add("country", country + ".peer")
+        //params.Add("country", country + ".peer")
+        params.Add("country", country)
+    } else if proxy_type == "pool" {
+        params.Add("country", country + ".pool")
     } else {
     	params.Add("country", country)
     }
