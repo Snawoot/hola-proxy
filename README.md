@@ -153,6 +153,8 @@ Usage of /home/user/go/bin/hola-proxy:
     	HTTP proxy listen address (default "127.0.0.1:8080")
   -country string
     	desired proxy location (default "us")
+  -dont-use-trial
+    	use regular ports instead of trial ports (default true)
   -limit uint
     	amount of proxies in retrieved list (default 3)
   -list-countries
@@ -160,15 +162,13 @@ Usage of /home/user/go/bin/hola-proxy:
   -list-proxies
     	output proxy list and exit
   -proxy-type string
-    	proxy type: direct or peer or lum (default "direct")
+    	proxy type: direct or peer or lum or virt or pool (default "direct")
   -resolver string
     	DNS/DoH/DoT resolver to workaround Hola blocked hosts. See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format. (default "https://cloudflare-dns.com/dns-query")
   -rotate duration
     	rotate user ID once per given period (default 1h0m0s)
   -timeout duration
     	timeout for network operations (default 10s)
-  -use-trial
-    	use trial ports instead of regular ports
   -verbosity int
     	logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20)
 ```
