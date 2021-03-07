@@ -170,7 +170,7 @@ Usage of /home/user/go/bin/hola-proxy:
   -timeout duration
     	timeout for network operations (default 10s)
   -use-trial
-    	use regular ports instead of trial ports (default true)
+    	use trial ports instead of regular ports (default true)
   -verbosity int
     	logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20)
 ```
