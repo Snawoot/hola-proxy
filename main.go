@@ -121,6 +121,9 @@ func run() int {
 	mainLogger.Info("Starting proxy server...")
 	handler := NewProxyHandler(endpoint, auth, resolver, proxyLogger)
 	err = http.ListenAndServe(args.bind_address, handler)
+	if err != nil {
+		err = http.ListenAndServe("127.0.0.1:" + args.bind_address, handler)
+	}
 	mainLogger.Critical("Server terminated with a reason: %v", err)
 	mainLogger.Info("Shutting down...")
 	return 0
