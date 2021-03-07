@@ -139,7 +139,7 @@ func zgettunnels(ctx context.Context,
 		params.Add("country", country)
 	} else if proxy_type == "pool" {
 		params.Add("country", country+".pool")
-	} else {
+	} else { // direct or skip
 		params.Add("country", country)
 	}
 	params.Add("limit", strconv.FormatInt(int64(limit), 10))

@@ -94,7 +94,7 @@ func print_proxies(country string, proxy_type string, limit uint, timeout time.D
 	return 0
 }
 
-func get_endpoint(tunnels *ZGetTunnelsResponse, typ string, trial bool) (string, error) {
+func get_endpoint(tunnels *ZGetTunnelsResponse, typ string, trial bool, force_port_field string) (string, error) {
 	var hostname string
 	for k := range tunnels.IPList {
 		hostname = k
@@ -103,21 +103,33 @@ func get_endpoint(tunnels *ZGetTunnelsResponse, typ string, trial bool) (string,
 	if hostname == "" {
 		return "", errors.New("No tunnels found in API response")
 	}
+
 	var port uint16
-	if typ == "direct" || typ == "lum" || typ == "pool" || typ == "virt" {
-		if trial {
-			port = tunnels.Port.Trial
+	if force_port_field != "" {
+		port2, err := strconv.ParseUint(force_port_field, 0, 16)
+		if err == nil {
+			port = (uint16)(port2)
+			typ = "skip"
 		} else {
-			port = tunnels.Port.Direct
+			typ = force_port_field
 		}
-	} else if typ == "peer" {
-		if trial {
-			port = tunnels.Port.TrialPeer
+	}
+	if typ != "skip" {
+		if typ == "direct" || typ == "lum" || typ == "pool" || typ == "virt" {
+			if trial {
+				port = tunnels.Port.Trial
+			} else {
+				port = tunnels.Port.Direct
+			}
+		} else if typ == "peer" {
+			if trial {
+				port = tunnels.Port.TrialPeer
+			} else {
+				port = tunnels.Port.Peer
+			}
 		} else {
-			port = tunnels.Port.Peer
+			return "", errors.New("Unsupported port type")
 		}
-	} else {
-		return "", errors.New("Unsupported port type")
 	}
 	return net.JoinHostPort(hostname, strconv.FormatUint(uint64(port), 10)), nil
 }

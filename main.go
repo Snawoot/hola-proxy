@@ -43,10 +43,12 @@ type CLIArgs struct {
 	timeout, rotate                         time.Duration
 	proxy_type                              string
 	resolver                                string
+	force_port_field                        string
 }
 
 func parse_args() CLIArgs {
 	var args CLIArgs
+	flag.StringVar(&args.force_port_field, "force-port-field", "", "force specific port field/num (example 24232 or lum)") // would be nice to not show in help page
 	flag.StringVar(&args.country, "country", "us", "desired proxy location")
 	flag.BoolVar(&args.list_countries, "list-countries", false, "list available countries and exit")
 	flag.BoolVar(&args.list_proxies, "list-proxies", false, "output proxy list and exit")
@@ -56,11 +58,12 @@ func parse_args() CLIArgs {
 		"(10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical)")
 	flag.DurationVar(&args.timeout, "timeout", 10*time.Second, "timeout for network operations")
 	flag.DurationVar(&args.rotate, "rotate", 1*time.Hour, "rotate user ID once per given period")
-	flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or peer or lum or virt or pool")
+	flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or peer or lum or virt or pool") // or skip but not mentioned
+	// skip would be used something like this: `./bin/hola-proxy -proxy-type skip -force-port-field 24232 -country ua.peer` for debugging
 	flag.StringVar(&args.resolver, "resolver", "https://cloudflare-dns.com/dns-query",
 		"DNS/DoH/DoT resolver to workaround Hola blocked hosts. "+
 			"See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
-	flag.BoolVar(&args.use_trial, "dont-use-trial", true, "use regular ports instead of trial ports")
+	flag.BoolVar(&args.use_trial, "dont-use-trial", true, "use regular ports instead of trial ports") // would be nice to not show in help page
 	flag.Parse()
 	if args.country == "" {
 		arg_fail("Country can't be empty string.")
@@ -108,7 +111,7 @@ func run() int {
 		logWriter.Close()
 		return 4
 	}
-	endpoint, err := get_endpoint(tunnels, args.proxy_type, args.use_trial)
+	endpoint, err := get_endpoint(tunnels, args.proxy_type, args.use_trial, args.force_port_field)
 	if err != nil {
 		mainLogger.Critical("Unable to determine proxy endpoint: %v", err)
 		logWriter.Close()
