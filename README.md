@@ -153,6 +153,8 @@ Usage of /home/user/go/bin/hola-proxy:
     	HTTP proxy listen address (default "127.0.0.1:8080")
   -country string
     	desired proxy location (default "us")
+  -dont-use-trial
+    	use regular ports instead of trial ports
   -force-port-field string
     	force specific port field/num (example 24232 or lum)
   -limit uint
@@ -169,8 +171,6 @@ Usage of /home/user/go/bin/hola-proxy:
     	rotate user ID once per given period (default 1h0m0s)
   -timeout duration
     	timeout for network operations (default 10s)
-  -use-trial
-    	use trial ports instead of regular ports (default true)
   -verbosity int
     	logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20)
 ```
