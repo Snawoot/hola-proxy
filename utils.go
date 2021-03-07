@@ -116,13 +116,13 @@ func get_endpoint(tunnels *ZGetTunnelsResponse, typ string, trial bool, force_po
 	}
 	if typ != "skip" {
 		if typ == "direct" || typ == "lum" || typ == "pool" || typ == "virt" {
-			if trial {
+			if !trial {
 				port = tunnels.Port.Trial
 			} else {
 				port = tunnels.Port.Direct
 			}
 		} else if typ == "peer" {
-			if trial {
+			if !trial {
 				port = tunnels.Port.TrialPeer
 			} else {
 				port = tunnels.Port.Peer
