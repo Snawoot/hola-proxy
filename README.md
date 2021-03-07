@@ -154,7 +154,9 @@ Usage of /home/user/go/bin/hola-proxy:
   -country string
     	desired proxy location (default "us")
   -dont-use-trial
-    	use regular ports instead of trial ports (default true)
+    	use regular ports instead of trial ports
+  -force-port-field string
+    	force specific port field/num (example 24232 or lum)
   -limit uint
     	amount of proxies in retrieved list (default 3)
   -list-countries
