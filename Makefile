@@ -54,3 +54,21 @@ $(OUTSUFFIX).windows-386.exe: $(src)
 
 clean:
 	rm -f bin/*
+
+fmt:
+	go fmt ./...
+
+run:
+	go run .
+
+.PHONY: clean all native fmt \
+	bin-native \
+	bin-linux-amd64 \
+	bin-linux-386 \
+	bin-linux-arm \
+	bin-freebsd-amd64 \
+	bin-freebsd-386 \
+	bin-freebsd-arm \
+	bin-darwin-amd64 \
+	bin-windows-amd64 \
+	bin-windows-386
