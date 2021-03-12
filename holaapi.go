@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"github.com/campoy/unique"
 	"github.com/google/uuid"
 	"io/ioutil"
@@ -24,12 +25,17 @@ const BG_INIT_URL = CCGI_URL + "background_init"
 const ZGETTUNNELS_URL = CCGI_URL + "zgettunnels"
 const LOGIN_PREFIX = "user-uuid-"
 
+var TemporaryBanError = errors.New("temporary ban detected")
+var PermanentBanError = errors.New("permanent ban detected")
+
 type CountryList []string
 
 type BgInitResponse struct {
-	Ver     string `json:"ver"`
-	Key     int64  `json:"key"`
-	Country string `json:"country"`
+	Ver       string `json:"ver"`
+	Key       int64  `json:"key"`
+	Country   string `json:"country"`
+	Blocked   bool   `json:"blocked,omitempty"`
+	Permanent bool   `json:"permanent,omitempty"`
 }
 
 type PortMap struct {
@@ -118,7 +124,15 @@ func background_init(ctx context.Context, user_uuid string) (res BgInitResponse,
 		reterr = err
 		return
 	}
+
 	reterr = json.Unmarshal(resp, &res)
+	if reterr == nil && res.Blocked {
+		if res.Permanent {
+			reterr = PermanentBanError
+		} else {
+			reterr = TemporaryBanError
+		}
+	}
 	return
 }
 
