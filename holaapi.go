@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/campoy/unique"
 	"github.com/google/uuid"
 	"io/ioutil"
@@ -86,6 +87,11 @@ func do_req(ctx context.Context, method, url string, query, data url.Values) ([]
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
+	}
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent:
+	default:
+		return nil, errors.New(fmt.Sprintf("Bad HTTP response: %d %s", resp.StatusCode, resp.Status))
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
