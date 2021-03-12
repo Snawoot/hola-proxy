@@ -91,7 +91,7 @@ func do_req(ctx context.Context, method, url string, query, data url.Values) ([]
 	switch resp.StatusCode {
 	case http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent:
 	default:
-		return nil, errors.New(fmt.Sprintf("Bad HTTP response: %d %s", resp.StatusCode, resp.Status))
+		return nil, errors.New(fmt.Sprintf("Bad HTTP response: %s", resp.Status))
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
