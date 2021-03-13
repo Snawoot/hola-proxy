@@ -60,9 +60,12 @@ fmt:
 	go fmt ./...
 
 run:
-	go run .
+	go run $(LDFLAGS) .
 
-.PHONY: clean all native fmt \
+install:
+	go install $(BUILDOPTS) $(LDFLAGS) .
+
+.PHONY: clean all native fmt install \
 	bin-native \
 	bin-linux-amd64 \
 	bin-linux-386 \
