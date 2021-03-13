@@ -1,7 +1,8 @@
 PROGNAME = hola-proxy
 OUTSUFFIX = bin/$(PROGNAME)
+VERSION := $(shell git describe)
 BUILDOPTS = -a -tags netgo
-LDFLAGS = -ldflags '-s -w -extldflags "-static"'
+LDFLAGS = -ldflags '-s -w -extldflags "-static" -X main.version=$(VERSION)'
 
 src = $(wildcard *.go)
 
@@ -59,9 +60,12 @@ fmt:
 	go fmt ./...
 
 run:
-	go run .
+	go run $(LDFLAGS) .
 
-.PHONY: clean all native fmt \
+install:
+	go install $(BUILDOPTS) $(LDFLAGS) .
+
+.PHONY: clean all native fmt install \
 	bin-native \
 	bin-linux-amd64 \
 	bin-linux-386 \

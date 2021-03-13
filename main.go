@@ -13,6 +13,7 @@ import (
 
 var (
 	PROTOCOL_WHITELIST map[string]bool
+	version            = "undefined"
 )
 
 func init() {
@@ -44,6 +45,7 @@ type CLIArgs struct {
 	proxy_type                              string
 	resolver                                string
 	force_port_field                        string
+	showVersion                             bool
 }
 
 func parse_args() CLIArgs {
@@ -64,6 +66,7 @@ func parse_args() CLIArgs {
 		"DNS/DoH/DoT resolver to workaround Hola blocked hosts. "+
 			"See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
 	flag.BoolVar(&args.use_trial, "dont-use-trial", false, "use regular ports instead of trial ports") // would be nice to not show in help page
+	flag.BoolVar(&args.showVersion, "version", false, "show program version and exit")
 	flag.Parse()
 	if args.country == "" {
 		arg_fail("Country can't be empty string.")
@@ -79,6 +82,11 @@ func parse_args() CLIArgs {
 
 func run() int {
 	args := parse_args()
+	if args.showVersion {
+		fmt.Println(version)
+		return 0
+	}
+
 	if args.list_countries {
 		return print_countries(args.timeout)
 	}
@@ -98,6 +106,7 @@ func run() int {
 	proxyLogger := NewCondLogger(log.New(logWriter, "PROXY   : ",
 		log.LstdFlags|log.Lshortfile),
 		args.verbosity)
+	mainLogger.Info("hola-proxy client version %s is starting...", version)
 	mainLogger.Info("Constructing fallback DNS upstream...")
 	resolver, err := NewResolver(args.resolver, args.timeout)
 	if err != nil {
@@ -120,6 +129,7 @@ func run() int {
 	mainLogger.Info("Endpoint: %s", endpoint)
 	mainLogger.Info("Starting proxy server...")
 	handler := NewProxyHandler(endpoint, auth, resolver, proxyLogger)
+	mainLogger.Info("Init complete.")
 	err = http.ListenAndServe(args.bind_address, handler)
 	mainLogger.Critical("Server terminated with a reason: %v", err)
 	mainLogger.Info("Shutting down...")

@@ -44,7 +44,7 @@ Pre-built binaries available on [releases](https://github.com/Snawoot/hola-proxy
 Alternatively, you may install hola-proxy from source. Run within source directory
 
 ```
-go install
+make install
 ```
 
 #### Docker
