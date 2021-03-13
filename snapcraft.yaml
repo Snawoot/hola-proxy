@@ -10,7 +10,6 @@ base: core18
 parts:
   hola-proxy:
     plugin: go
-    go-importpath: github.com/Snawoot/hola-proxy
     source: .
     build-packages:
       - gcc
