@@ -1,7 +1,8 @@
 PROGNAME = hola-proxy
 OUTSUFFIX = bin/$(PROGNAME)
+VERSION := $(shell git describe)
 BUILDOPTS = -a -tags netgo
-LDFLAGS = -ldflags '-s -w -extldflags "-static"'
+LDFLAGS = -ldflags '-s -w -extldflags "-static" -X main.version=$(VERSION)'
 
 src = $(wildcard *.go)
 
