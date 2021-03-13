@@ -11,14 +11,18 @@ parts:
   hola-proxy:
     plugin: go
     go-importpath: github.com/Snawoot/hola-proxy
-    source: https://github.com/Snawoot/hola-proxy
-    source-type: git
+    source: .
     build-packages:
       - gcc
+    override-build:
+      make &&
+      cp bin/hola-proxy "$SNAPCRAFT_PART_INSTALL"
+    stage:
+      - hola-proxy
 
 apps:
   hola-proxy:
-    command: bin/hola-proxy
+    command: hola-proxy
     plugs:
       - network
       - network-bind
