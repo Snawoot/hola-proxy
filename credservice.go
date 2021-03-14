@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"time"
 )
 
 const DEFAULT_LIST_LIMIT = 3
-const API_CALL_ATTEMPTS = 3
 
 func CredService(interval, timeout time.Duration,
 	country string,
@@ -24,15 +24,21 @@ func CredService(interval, timeout time.Duration,
 		return
 	}
 
-	for i := 0; i < API_CALL_ATTEMPTS; i++ {
-		ctx, _ := context.WithTimeout(context.Background(), timeout)
-		tunnels, user_uuid, err = Tunnels(ctx, country, proxytype, DEFAULT_LIST_LIMIT)
-		if err == nil {
-			break
+	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
+		tunnels, user_uuid, err = Tunnels(ctx, client, country, proxytype, DEFAULT_LIST_LIMIT)
+		if err != nil {
+			logger.Error("Configuration bootstrap error: %v. Retrying with a fallback mechanisms...", err)
+			return false
 		}
+		return true
+	})
+	if tx_err != nil {
+		logger.Critical("Transaction recovery mechanism failure: %v", tx_err)
+		err = tx_err
+		return
 	}
-	if err != nil {
-		logger.Critical("Configuration bootstrap failed: %v", err)
+	if !tx_res {
+		logger.Critical("All attempts failed.")
 		return
 	}
 	auth_header = basic_auth_header(LOGIN_PREFIX+user_uuid,
@@ -48,23 +54,28 @@ func CredService(interval, timeout time.Duration,
 		for {
 			<-ticker.C
 			logger.Info("Rotating credentials...")
-			for i := 0; i < API_CALL_ATTEMPTS; i++ {
-				ctx, _ := context.WithTimeout(context.Background(), timeout)
-				tuns, user_uuid, err = Tunnels(ctx, country, proxytype, DEFAULT_LIST_LIMIT)
-				if err == nil {
-					break
+			tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
+				tuns, user_uuid, err = Tunnels(ctx, client, country, proxytype, DEFAULT_LIST_LIMIT)
+				if err != nil {
+					logger.Error("Credential rotation error: %v. Retrying with a fallback mechanisms...", err)
+					return false
 				}
+				return true
+			})
+			if tx_err != nil {
+				logger.Critical("Transaction recovery mechanism failure: %v", tx_err)
+				err = tx_err
+				continue
 			}
-			if err != nil {
-				logger.Error("Credential rotation failed after %d attempts. Error: %v",
-					API_CALL_ATTEMPTS, err)
-			} else {
-				(&mux).Lock()
-				auth_header = basic_auth_header(LOGIN_PREFIX+user_uuid,
-					tuns.AgentKey)
-				(&mux).Unlock()
-				logger.Info("Credentials rotated successfully.")
+			if !tx_res {
+				logger.Critical("All rotation attempts failed.")
+				continue
 			}
+			(&mux).Lock()
+			auth_header = basic_auth_header(LOGIN_PREFIX+user_uuid,
+				tuns.AgentKey)
+			(&mux).Unlock()
+			logger.Info("Credentials rotated successfully.")
 		}
 	}()
 	return

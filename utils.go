@@ -50,10 +50,24 @@ func proxy(ctx context.Context, left, right net.Conn) {
 }
 
 func print_countries(timeout time.Duration) int {
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
-	countries, err := VPNCountries(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	var (
+		countries CountryList
+		err       error
+	)
+	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
+		countries, err = VPNCountries(ctx, client)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with a fallback mechanisms...\n", err)
+			return false
+		}
+		return true
+	})
+	if tx_err != nil {
+		fmt.Fprintf(os.Stderr, "Transaction recovery mechanism failure: %v.\n", tx_err)
+		return 4
+	}
+	if !tx_res {
+		fmt.Fprintf(os.Stderr, "All attempts failed.")
 		return 3
 	}
 	for _, code := range countries {
@@ -63,10 +77,25 @@ func print_countries(timeout time.Duration) int {
 }
 
 func print_proxies(country string, proxy_type string, limit uint, timeout time.Duration) int {
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
-	tunnels, user_uuid, err := Tunnels(ctx, country, proxy_type, limit)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	var (
+		tunnels   *ZGetTunnelsResponse
+		user_uuid string
+		err       error
+	)
+	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
+		tunnels, user_uuid, err = Tunnels(ctx, client, country, proxy_type, limit)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with a fallback mechanisms...\n", err)
+			return false
+		}
+		return true
+	})
+	if tx_err != nil {
+		fmt.Fprintf(os.Stderr, "Transaction recovery mechanism failure: %v.\n", tx_err)
+		return 4
+	}
+	if !tx_res {
+		fmt.Fprintf(os.Stderr, "All attempts failed.")
 		return 3
 	}
 	wr := csv.NewWriter(os.Stdout)
