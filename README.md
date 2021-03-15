@@ -123,7 +123,7 @@ us - United States of America
 Run proxy via country of your choice:
 
 ```
-$ ./proxy -country de
+$ ./hola-proxy -country de
 ```
 
 Or run proxy on residential IP:
