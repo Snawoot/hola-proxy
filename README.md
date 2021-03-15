@@ -2,7 +2,8 @@
 
 [![hola-proxy](https://snapcraft.io//hola-proxy/badge.svg)](https://snapcraft.io/hola-proxy)
 
-Standalone Hola proxy client. Just run it and it'll start plain HTTP proxy server forwarding traffic via Hola proxies of your choice. By default application listens port on 127.0.0.1:8080.
+Standalone Hola proxy client. Just run it and it'll start a plain HTTP proxy server forwarding traffic through Hola proxies of your choice.
+By default the application listens on 127.0.0.1:8080.
 
 Application is capable to forward traffic via proxies in datacenters (flag `-proxy-type direct`, default) or via peer proxies on residental IPs (consumer ISP) in that country (flag `-proxy-type pool` or `-proxy-type lum`).
 
@@ -31,17 +32,18 @@ git clone https://ipfs.io/ipns/k51qzi5uqu5dkrgx0hozpy1tlggw5o0whtquyrjlc6pprhvbm
 
 * Cross-platform (Windows/Mac OS/Linux/Android (via shell)/\*BSD)
 * Uses TLS for secure communication with upstream proxies
-* Zero-configuration
+* Zero configuration
+* Simple and straight forward
 
 ## Installation
 
-#### Binary download
+#### Binaries
 
-Pre-built binaries available on [releases](https://github.com/Snawoot/hola-proxy/releases/latest) page.
+Pre-built binaries are available [here](https://github.com/Snawoot/hola-proxy/releases/latest).
 
-#### From source
+#### Build from source
 
-Alternatively, you may install hola-proxy from source. Run within source directory
+Alternatively, you may install hola-proxy from source. Run the following within the source directory:
 
 ```
 make install
@@ -49,7 +51,7 @@ make install
 
 #### Docker
 
-Docker image is available as well. Here is an example for running proxy via DE as a background service:
+A docker image is available as well. Here is an example of running hola-proxy via DE as a background service:
 
 ```sh
 docker run -d \
@@ -73,7 +75,7 @@ sudo snap install hola-proxy
 List available countries:
 
 ```
-$ ~/go/bin/hola-proxy -list-countries
+$ ./hola-proxy -list-countries
 ar - Argentina
 at - Austria
 au - Australia
@@ -121,19 +123,19 @@ us - United States of America
 Run proxy via country of your choice:
 
 ```
-$ ~/go/bin/hola-proxy -country de
+$ ./hola-proxy -country de
 ```
 
-Or run proxy on residental IP:
+Or run proxy on residential IP:
 
 ```
-$ ~/go/bin/hola-proxy -country de -proxy-type lum
+$ ./hola-proxy -proxy-type lum
 ```
 
 Also it is possible to export proxy addresses and credentials:
 
 ```
-$ ~/go/bin/hola-proxy -country de -list-proxies -limit 3
+$ ./hola-proxy -country de -list-proxies -limit 3
 Login: user-uuid-0a67c797b3214cbdb432b089c4b801cd
 Password: cd123c465901
 Proxy-Authorization: basic dXNlci11dWlkLTBhNjdjNzk3YjMyMTRjYmRiNDMyYjA4OWM0YjgwMWNkOmNkMTIzYzQ2NTkwMQ==
@@ -144,33 +146,19 @@ zagent830.hola.org,104.248.24.64,22222,22223,22224,22225,22226,digitalocean
 zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 ```
 
-## Synopsis
+## List of arguments
 
-```
-$ ~/go/bin/hola-proxy -h
-Usage of /home/user/go/bin/hola-proxy:
-  -bind-address string
-    	HTTP proxy listen address (default "127.0.0.1:8080")
-  -country string
-    	desired proxy location (default "us")
-  -dont-use-trial
-    	use regular ports instead of trial ports
-  -force-port-field string
-    	force specific port field/num (example 24232 or lum)
-  -limit uint
-    	amount of proxies in retrieved list (default 3)
-  -list-countries
-    	list available countries and exit
-  -list-proxies
-    	output proxy list and exit
-  -proxy-type string
-    	proxy type: direct or peer or lum or virt or pool (default "direct")
-  -resolver string
-    	DNS/DoH/DoT resolver to workaround Hola blocked hosts. See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format. (default "https://cloudflare-dns.com/dns-query")
-  -rotate duration
-    	rotate user ID once per given period (default 1h0m0s)
-  -timeout duration
-    	timeout for network operations (default 10s)
-  -verbosity int
-    	logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20)
-```
+| Argument | Type | Description |
+| -------- | ---- | ----------- |
+| bind-address | String | HTTP proxy address to listen to (default "127.0.0.1:8080") |
+| country | String | desired proxy location (default "us") |
+| dont-use-trial | - | use regular ports instead of trial ports |
+| force-port-field | Number | force specific port field/num (example 24232 or lum) |
+| limit | Unsigned Integer (Number) | amount of proxies in retrieved list (default 3) |
+| list-countries | String | list available countries and exit |
+| list-proxies | - | output proxy list and exit |
+| proxy-type | String | proxy type (Datacenter: direct, virt) (Residential: peer, lum, pool) (default "direct") |
+| resolver | String | DNS/DoH/DoT resolver to workaround Hola blocked hosts. See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format. (default "https://cloudflare-dns.com/dns-query") |
+| rotate | Duration | rotate user ID once per given period (default 1h0m0s) |
+| timeout | Duration | timeout for network operations (default 10s) |
+| verbosity | Number | logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20) |
