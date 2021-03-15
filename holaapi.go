@@ -104,17 +104,20 @@ func (c *FallbackConfig) ShuffleAgents() {
 	})
 }
 
-func (c *FallbackConfig) ToProxies() []*url.URL {
-	res := make([]*url.URL, 0, len(c.Agents))
-	for _, agent := range c.Agents {
-		url := &url.URL{
-			Scheme: "https",
-			Host: net.JoinHostPort(agent.Name+AGENT_SUFFIX,
-				fmt.Sprintf("%d", agent.Port)),
-		}
-		res = append(res, url)
+func (c *FallbackConfig) Clone() *FallbackConfig {
+	return &FallbackConfig{
+		Agents: append([]FallbackAgent(nil), c.Agents...),
+		UpdatedAt: c.UpdatedAt,
+		TTL: c.TTL,
 	}
-	return res
+}
+
+func (a *FallbackAgent) ToProxy() *url.URL {
+	return &url.URL{
+		Scheme: "https",
+		Host: net.JoinHostPort(a.Name+AGENT_SUFFIX,
+			fmt.Sprintf("%d", a.Port)),
+	}
 }
 
 func do_req(ctx context.Context, client *http.Client, method, url string, query, data url.Values) ([]byte, error) {
@@ -278,7 +281,7 @@ var (
 	cachedFBC *FallbackConfig
 )
 
-func GetFallbackProxies(ctx context.Context) ([]*url.URL, error) {
+func GetFallbackProxies(ctx context.Context) (*FallbackConfig, error) {
 	fbcMux.Lock()
 	defer fbcMux.Unlock()
 
@@ -292,11 +295,12 @@ func GetFallbackProxies(ctx context.Context) ([]*url.URL, error) {
 		if err != nil {
 			return nil, err
 		}
+		cachedFBC = fbc
 	} else {
 		fbc = cachedFBC
 	}
 
-	return fbc.ToProxies(), nil
+	return fbc.Clone(), nil
 }
 
 func Tunnels(ctx context.Context,
@@ -316,20 +320,29 @@ func Tunnels(ctx context.Context,
 }
 
 // Returns default http client with a proxy override
-func httpClientWithProxy(proxy *url.URL) *http.Client {
+func httpClientWithProxy(agent *FallbackAgent) *http.Client {
+	t := &http.Transport{
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	if agent == nil {
+		t.DialContext = dialer.DialContext
+	} else {
+		t.Proxy = http.ProxyURL(agent.ToProxy())
+		addr := net.JoinHostPort(agent.IP, fmt.Sprintf("%d", agent.Port))
+		t.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "tcp4", addr)
+		}
+	}
 	return &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxy),
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
+		Transport: t,
 	}
 }
 
@@ -345,13 +358,13 @@ func EnsureTransaction(baseCtx context.Context, txnTimeout time.Duration, txn fu
 	}
 
 	// Fallback needed
-	proxies, err := GetFallbackProxies(baseCtx)
+	fbc, err := GetFallbackProxies(baseCtx)
 	if err != nil {
 		return false, err
 	}
 
-	for _, proxy := range proxies {
-		client = httpClientWithProxy(proxy)
+	for _, agent := range fbc.Agents {
+		client = httpClientWithProxy(&agent)
 		defer client.CloseIdleConnections()
 
 		ctx, cancel = context.WithTimeout(baseCtx, txnTimeout)
