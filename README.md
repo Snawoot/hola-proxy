@@ -129,7 +129,7 @@ $ ./hola-proxy -country de
 Or run proxy on residential IP:
 
 ```
-$ ~/go/bin/hola-proxy -proxy-type lum
+$ ./hola-proxy -proxy-type lum
 ```
 
 Also it is possible to export proxy addresses and credentials:
