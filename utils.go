@@ -18,6 +18,26 @@ import (
 	"time"
 )
 
+type Endpoint struct {
+	Host    string
+	Port    uint16
+	TLSName string
+}
+
+func (e *Endpoint) URL() *url.URL {
+	if e.TLSName == "" {
+		return &url.URL{
+			Scheme: "http",
+			Host:   net.JoinHostPort(e.Host, fmt.Sprintf("%d", e.Port)),
+		}
+	} else {
+		return &url.URL{
+			Scheme: "https",
+			Host:   net.JoinHostPort(e.TLSName, fmt.Sprintf("%d", e.Port)),
+		}
+	}
+}
+
 func basic_auth_header(login, password string) string {
 	return "basic " + base64.StdEncoding.EncodeToString(
 		[]byte(login+":"+password))
@@ -123,14 +143,15 @@ func print_proxies(country string, proxy_type string, limit uint, timeout time.D
 	return 0
 }
 
-func get_endpoint(tunnels *ZGetTunnelsResponse, typ string, trial bool, force_port_field string) (string, error) {
-	var hostname string
-	for k := range tunnels.IPList {
+func get_endpoint(tunnels *ZGetTunnelsResponse, typ string, trial bool, force_port_field string) (*Endpoint, error) {
+	var hostname, ip string
+	for k, v := range tunnels.IPList {
 		hostname = k
+		ip = v
 		break
 	}
-	if hostname == "" {
-		return "", errors.New("No tunnels found in API response")
+	if hostname == "" || ip == "" {
+		return nil, errors.New("No tunnels found in API response")
 	}
 
 	var port uint16
@@ -157,10 +178,14 @@ func get_endpoint(tunnels *ZGetTunnelsResponse, typ string, trial bool, force_po
 				port = tunnels.Port.Peer
 			}
 		} else {
-			return "", errors.New("Unsupported port type")
+			return nil, errors.New("Unsupported port type")
 		}
 	}
-	return net.JoinHostPort(hostname, strconv.FormatUint(uint64(port), 10)), nil
+	return &Endpoint{
+		Host:    ip,
+		Port:    port,
+		TLSName: hostname,
+	}, nil
 }
 
 // Hop-by-hop headers. These are removed when sent to the backend.
