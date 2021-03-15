@@ -57,7 +57,7 @@ func print_countries(timeout time.Duration) int {
 	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
 		countries, err = VPNCountries(ctx, client)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with a fallback mechanisms...\n", err)
+			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with the fallback mechanism...\n", err)
 			return false
 		}
 		return true
@@ -85,7 +85,7 @@ func print_proxies(country string, proxy_type string, limit uint, timeout time.D
 	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
 		tunnels, user_uuid, err = Tunnels(ctx, client, country, proxy_type, limit)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with a fallback mechanisms...\n", err)
+			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with the fallback mechanism...\n", err)
 			return false
 		}
 		return true

@@ -27,7 +27,7 @@ func CredService(interval, timeout time.Duration,
 	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
 		tunnels, user_uuid, err = Tunnels(ctx, client, country, proxytype, DEFAULT_LIST_LIMIT)
 		if err != nil {
-			logger.Error("Configuration bootstrap error: %v. Retrying with a fallback mechanisms...", err)
+			logger.Error("Configuration bootstrap error: %v. Retrying with the fallback mechanism...", err)
 			return false
 		}
 		return true
@@ -57,7 +57,7 @@ func CredService(interval, timeout time.Duration,
 			tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
 				tuns, user_uuid, err = Tunnels(ctx, client, country, proxytype, DEFAULT_LIST_LIMIT)
 				if err != nil {
-					logger.Error("Credential rotation error: %v. Retrying with a fallback mechanisms...", err)
+					logger.Error("Credential rotation error: %v. Retrying with the fallback mechanism...", err)
 					return false
 				}
 				return true
