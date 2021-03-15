@@ -64,7 +64,7 @@ run:
 	go run $(LDFLAGS) .
 
 install:
-	go install $(BUILDOPTS) $(LDFLAGS) .
+	go install $(LDFLAGS_NATIVE) .
 
 .PHONY: clean all native fmt install \
 	bin-native \
