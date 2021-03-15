@@ -3,17 +3,22 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/campoy/unique"
-	"github.com/google/uuid"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
+	"time"
+
+	"github.com/campoy/unique"
+	"github.com/google/uuid"
 )
 
 const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
@@ -25,6 +30,8 @@ const VPN_COUNTRIES_URL = CCGI_URL + "vpn_countries.json"
 const BG_INIT_URL = CCGI_URL + "background_init"
 const ZGETTUNNELS_URL = CCGI_URL + "zgettunnels"
 const LOGIN_PREFIX = "user-uuid-"
+const FALLBACK_CONF_URL = "https://www.dropbox.com/s/jemizcvpmf2qb9v/cloud_failover.conf?dl=1"
+const AGENT_SUFFIX = ".hola.org"
 
 var TemporaryBanError = errors.New("temporary ban detected")
 var PermanentBanError = errors.New("permanent ban detected")
@@ -57,11 +64,66 @@ type ZGetTunnelsResponse struct {
 	Ztun       map[string][]string `json:"ztun"`
 }
 
-func do_req(ctx context.Context, method, url string, query, data url.Values) ([]byte, error) {
+type FallbackAgent struct {
+	Name string `json:"name"`
+	IP   string `json:"ip"`
+	Port uint16 `json:"port"`
+}
+
+type fallbackConfResponse struct {
+	Agents    []FallbackAgent `json:"agents"`
+	UpdatedAt int64           `json:"updated_ts"`
+	TTL       int64           `json:"ttl_ms"`
+}
+
+type FallbackConfig struct {
+	Agents    []FallbackAgent
+	UpdatedAt time.Time
+	TTL       time.Duration
+}
+
+func (c *FallbackConfig) UnmarshalJSON(data []byte) error {
+	r := fallbackConfResponse{}
+	err := json.Unmarshal(data, &r)
+	if err != nil {
+		return err
+	}
+	c.Agents = r.Agents
+	c.UpdatedAt = time.Unix(r.UpdatedAt/1000, (r.UpdatedAt%1000)*1000000)
+	c.TTL = time.Duration(r.TTL * 1000000)
+	return nil
+}
+
+func (c *FallbackConfig) Expired() bool {
+	return time.Now().After(c.UpdatedAt.Add(c.TTL))
+}
+
+func (c *FallbackConfig) ShuffleAgents() {
+	rand.New(RandomSource).Shuffle(len(c.Agents), func(i, j int) {
+		c.Agents[i], c.Agents[j] = c.Agents[j], c.Agents[i]
+	})
+}
+
+func (c *FallbackConfig) Clone() *FallbackConfig {
+	return &FallbackConfig{
+		Agents: append([]FallbackAgent(nil), c.Agents...),
+		UpdatedAt: c.UpdatedAt,
+		TTL: c.TTL,
+	}
+}
+
+func (a *FallbackAgent) ToProxy() *url.URL {
+	return &url.URL{
+		Scheme: "https",
+		Host: net.JoinHostPort(a.Name+AGENT_SUFFIX,
+			fmt.Sprintf("%d", a.Port)),
+	}
+}
+
+func do_req(ctx context.Context, client *http.Client, method, url string, query, data url.Values) ([]byte, error) {
 	var (
-		client http.Client
-		req    *http.Request
-		err    error
+		req *http.Request
+		err error
 	)
 	if method == "" {
 		method = "GET"
@@ -101,10 +163,10 @@ func do_req(ctx context.Context, method, url string, query, data url.Values) ([]
 	return body, nil
 }
 
-func VPNCountries(ctx context.Context) (res CountryList, err error) {
+func VPNCountries(ctx context.Context, client *http.Client) (res CountryList, err error) {
 	params := make(url.Values)
 	params.Add("browser", EXT_BROWSER)
-	data, err := do_req(ctx, "", VPN_COUNTRIES_URL, params, nil)
+	data, err := do_req(ctx, client, "", VPN_COUNTRIES_URL, params, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -119,13 +181,13 @@ func VPNCountries(ctx context.Context) (res CountryList, err error) {
 	return
 }
 
-func background_init(ctx context.Context, user_uuid string) (res BgInitResponse, reterr error) {
+func background_init(ctx context.Context, client *http.Client, user_uuid string) (res BgInitResponse, reterr error) {
 	post_data := make(url.Values)
 	post_data.Add("login", "1")
 	post_data.Add("ver", EXT_VER)
 	qs := make(url.Values)
 	qs.Add("uuid", user_uuid)
-	resp, err := do_req(ctx, "POST", BG_INIT_URL, qs, post_data)
+	resp, err := do_req(ctx, client, "POST", BG_INIT_URL, qs, post_data)
 	if err != nil {
 		reterr = err
 		return
@@ -143,6 +205,7 @@ func background_init(ctx context.Context, user_uuid string) (res BgInitResponse,
 }
 
 func zgettunnels(ctx context.Context,
+	client *http.Client,
 	user_uuid string,
 	session_key int64,
 	country string,
@@ -163,14 +226,14 @@ func zgettunnels(ctx context.Context,
 		params.Add("country", country)
 	}
 	params.Add("limit", strconv.FormatInt(int64(limit), 10))
-	params.Add("ping_id", strconv.FormatFloat(rand.Float64(), 'f', -1, 64))
+	params.Add("ping_id", strconv.FormatFloat(rand.New(RandomSource).Float64(), 'f', -1, 64))
 	params.Add("ext_ver", EXT_VER)
 	params.Add("browser", EXT_BROWSER)
 	params.Add("product", PRODUCT)
 	params.Add("uuid", user_uuid)
 	params.Add("session_key", strconv.FormatInt(session_key, 10))
 	params.Add("is_premium", "0")
-	data, err := do_req(ctx, "", ZGETTUNNELS_URL, params, nil)
+	data, err := do_req(ctx, client, "", ZGETTUNNELS_URL, params, nil)
 	if err != nil {
 		reterr = err
 		return
@@ -180,17 +243,137 @@ func zgettunnels(ctx context.Context,
 	return
 }
 
+func fetchFallbackConfig(ctx context.Context) (*FallbackConfig, error) {
+	confRaw, err := do_req(ctx, &http.Client{}, "", FALLBACK_CONF_URL, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	l := len(confRaw)
+	if l < 4 {
+		return nil, errors.New("bad response length from fallback conf URL")
+	}
+
+	buf := &bytes.Buffer{}
+	buf.Grow(l)
+	buf.Write(confRaw[l-3:])
+	buf.Write(confRaw[:l-3])
+
+	b64dec := base64.NewDecoder(base64.RawStdEncoding, buf)
+	jdec := json.NewDecoder(b64dec)
+	fbc := &FallbackConfig{}
+
+	err = jdec.Decode(fbc)
+	if err != nil {
+		return nil, err
+	}
+
+	if fbc.Expired() {
+		return nil, errors.New("fetched expired fallback config")
+	}
+
+	fbc.ShuffleAgents()
+	return fbc, nil
+}
+
+var (
+	fbcMux    sync.Mutex
+	cachedFBC *FallbackConfig
+)
+
+func GetFallbackProxies(ctx context.Context) (*FallbackConfig, error) {
+	fbcMux.Lock()
+	defer fbcMux.Unlock()
+
+	var (
+		fbc *FallbackConfig
+		err error
+	)
+
+	if cachedFBC == nil || cachedFBC.Expired() {
+		fbc, err = fetchFallbackConfig(ctx)
+		if err != nil {
+			return nil, err
+		}
+		cachedFBC = fbc
+	} else {
+		fbc = cachedFBC
+	}
+
+	return fbc.Clone(), nil
+}
+
 func Tunnels(ctx context.Context,
+	client *http.Client,
 	country string,
 	proxy_type string,
 	limit uint) (res *ZGetTunnelsResponse, user_uuid string, reterr error) {
 	u := uuid.New()
 	user_uuid = hex.EncodeToString(u[:])
-	initres, err := background_init(ctx, user_uuid)
+	initres, err := background_init(ctx, client, user_uuid)
 	if err != nil {
 		reterr = err
 		return
 	}
-	res, reterr = zgettunnels(ctx, user_uuid, initres.Key, country, proxy_type, limit)
+	res, reterr = zgettunnels(ctx, client, user_uuid, initres.Key, country, proxy_type, limit)
 	return
+}
+
+// Returns default http client with a proxy override
+func httpClientWithProxy(agent *FallbackAgent) *http.Client {
+	t := &http.Transport{
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	if agent == nil {
+		t.DialContext = dialer.DialContext
+	} else {
+		t.Proxy = http.ProxyURL(agent.ToProxy())
+		addr := net.JoinHostPort(agent.IP, fmt.Sprintf("%d", agent.Port))
+		t.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "tcp4", addr)
+		}
+	}
+	return &http.Client{
+		Transport: t,
+	}
+}
+
+func EnsureTransaction(baseCtx context.Context, txnTimeout time.Duration, txn func(context.Context, *http.Client) bool) (bool, error) {
+	client := httpClientWithProxy(nil)
+	defer client.CloseIdleConnections()
+
+	ctx, cancel := context.WithTimeout(baseCtx, txnTimeout)
+	defer cancel()
+
+	if txn(ctx, client) {
+		return true, nil
+	}
+
+	// Fallback needed
+	fbc, err := GetFallbackProxies(baseCtx)
+	if err != nil {
+		return false, err
+	}
+
+	for _, agent := range fbc.Agents {
+		client = httpClientWithProxy(&agent)
+		defer client.CloseIdleConnections()
+
+		ctx, cancel = context.WithTimeout(baseCtx, txnTimeout)
+		defer cancel()
+
+		if txn(ctx, client) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
