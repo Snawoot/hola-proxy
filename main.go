@@ -126,7 +126,7 @@ func run() int {
 		logWriter.Close()
 		return 5
 	}
-	mainLogger.Info("Endpoint: %s", endpoint)
+	mainLogger.Info("Endpoint: %s", endpoint.URL().String())
 	mainLogger.Info("Starting proxy server...")
 	handler := NewProxyHandler(endpoint, auth, resolver, proxyLogger)
 	mainLogger.Info("Init complete.")
