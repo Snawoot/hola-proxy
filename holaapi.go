@@ -106,9 +106,9 @@ func (c *FallbackConfig) ShuffleAgents() {
 
 func (c *FallbackConfig) Clone() *FallbackConfig {
 	return &FallbackConfig{
-		Agents: append([]FallbackAgent(nil), c.Agents...),
+		Agents:    append([]FallbackAgent(nil), c.Agents...),
 		UpdatedAt: c.UpdatedAt,
-		TTL: c.TTL,
+		TTL:       c.TTL,
 	}
 }
 
@@ -338,7 +338,7 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 		t.Proxy = http.ProxyURL(agent.ToProxy())
 		addr := net.JoinHostPort(agent.IP, fmt.Sprintf("%d", agent.Port))
 		t.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
-			return dialer.DialContext(ctx, "tcp4", addr)
+			return dialer.DialContext(ctx, "tcp", addr)
 		}
 	}
 	return &http.Client{

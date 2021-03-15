@@ -2,36 +2,51 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"strings"
+	"time"
 )
 
 type AuthProvider func() string
 
 type ProxyHandler struct {
 	auth          AuthProvider
-	upstream      string
+	upstreamAddr  string
+	tlsName       string
 	logger        *CondLogger
+	dialer        *net.Dialer
 	httptransport http.RoundTripper
 	resolver      *Resolver
 }
 
-func NewProxyHandler(upstream string, auth AuthProvider, resolver *Resolver, logger *CondLogger) *ProxyHandler {
-	proxyurl, err := url.Parse("https://" + upstream)
-	if err != nil {
-		panic(err)
+func NewProxyHandler(upstream *Endpoint, auth AuthProvider, resolver *Resolver, logger *CondLogger) *ProxyHandler {
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
 	}
+	netaddr := net.JoinHostPort(upstream.Host, fmt.Sprintf("%d", upstream.Port))
 	httptransport := &http.Transport{
-		Proxy: http.ProxyURL(proxyurl),
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		Proxy:                 http.ProxyURL(upstream.URL()),
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "tcp", netaddr)
+		},
 	}
 	return &ProxyHandler{
 		auth:          auth,
-		upstream:      upstream,
+		upstreamAddr:  netaddr,
+		tlsName:       upstream.TLSName,
 		logger:        logger,
+		dialer:        dialer,
 		httptransport: httptransport,
 		resolver:      resolver,
 	}
@@ -48,17 +63,25 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		conn, err := tls.Dial("tcp", s.upstream, nil)
+		conn, err := s.dialer.DialContext(req.Context(), "tcp", s.upstreamAddr)
 		if err != nil {
-			s.logger.Error("Can't dial tls upstream: %v", err)
-			http.Error(wr, "Can't dial tls upstream", http.StatusBadGateway)
+			s.logger.Error("Can't dial upstream: %v", err)
+			http.Error(wr, "Can't dial upstream", http.StatusBadGateway)
 			return
+		}
+		defer conn.Close()
+
+		if s.tlsName != "" {
+			conn = tls.Client(conn, &tls.Config{
+				ServerName: s.tlsName,
+			})
+			defer conn.Close()
 		}
 
 		_, err = conn.Write(rawreq)
 		if err != nil {
-			s.logger.Error("Can't write tls upstream: %v", err)
-			http.Error(wr, "Can't write tls upstream", http.StatusBadGateway)
+			s.logger.Error("Can't write upstream: %v", err)
+			http.Error(wr, "Can't write upstream", http.StatusBadGateway)
 			return
 		}
 		bufrd := bufio.NewReader(conn)
@@ -74,14 +97,22 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 			proxyResp.Header.Get("X-Hola-Error") == "Forbidden Host" {
 			s.logger.Info("Request %s denied by upstream. Rescuing it with resolve&rewrite workaround.",
 				req.URL.String())
-			conn.Close()
-			conn, err = tls.Dial("tcp", s.upstream, nil)
+
+			conn, err = s.dialer.DialContext(req.Context(), "tcp", s.upstreamAddr)
 			if err != nil {
-				s.logger.Error("Can't dial tls upstream: %v", err)
-				http.Error(wr, "Can't dial tls upstream", http.StatusBadGateway)
+				s.logger.Error("Can't dial upstream: %v", err)
+				http.Error(wr, "Can't dial upstream", http.StatusBadGateway)
 				return
 			}
 			defer conn.Close()
+
+			if s.tlsName != "" {
+				conn = tls.Client(conn, &tls.Config{
+					ServerName: s.tlsName,
+				})
+				defer conn.Close()
+			}
+
 			err = rewriteConnectReq(req, s.resolver)
 			if err != nil {
 				s.logger.Error("Can't rewrite request: %v", err)
@@ -101,7 +132,6 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 				return
 			}
 		} else {
-			defer conn.Close()
 			responseBytes, err = httputil.DumpResponse(proxyResp, false)
 			if err != nil {
 				s.logger.Error("Can't dump response: %v", err)
@@ -160,14 +190,21 @@ func (s *ProxyHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 			proxyReq.Header.Set("Proxy-Authorization", s.auth())
 			rawreq, _ := httputil.DumpRequest(proxyReq, false)
 
-			// Prepare upstream TLS conn
-			conn, err := tls.Dial("tcp", s.upstream, nil)
+			// Prepare upstream conn
+			conn, err := s.dialer.DialContext(req.Context(), "tcp", s.upstreamAddr)
 			if err != nil {
 				s.logger.Error("Can't dial tls upstream: %v", err)
 				http.Error(wr, "Can't dial tls upstream", http.StatusBadGateway)
 				return
 			}
 			defer conn.Close()
+
+			if s.tlsName != "" {
+				conn = tls.Client(conn, &tls.Config{
+					ServerName: s.tlsName,
+				})
+				defer conn.Close()
+			}
 
 			// Send proxy request
 			_, err = conn.Write(rawreq)
