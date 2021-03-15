@@ -3,6 +3,7 @@ OUTSUFFIX = bin/$(PROGNAME)
 VERSION := $(shell git describe)
 BUILDOPTS = -a -tags netgo
 LDFLAGS = -ldflags '-s -w -extldflags "-static" -X main.version=$(VERSION)'
+LDFLAGS_NATIVE = -ldflags '-s -w -X main.version=$(VERSION)'
 
 src = $(wildcard *.go)
 
@@ -24,7 +25,7 @@ bin-windows-amd64: $(OUTSUFFIX).windows-amd64.exe
 bin-windows-386: $(OUTSUFFIX).windows-386.exe
 
 $(OUTSUFFIX): $(src)
-	CGO_ENABLED=0 go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	go build $(LDFLAGS_NATIVE) -o $@
 
 $(OUTSUFFIX).linux-amd64: $(src)
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(BUILDOPTS) $(LDFLAGS) -o $@
