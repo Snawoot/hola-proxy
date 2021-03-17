@@ -32,8 +32,22 @@ else
 	port=$3
 fi
 
-echo "country    $country"
-echo "proxytype  $proxytype"
-echo "proxy      127.0.0.1:$port"
-echo
-exec hola-proxy -bind-address "127.0.0.1:$port" -country "$country" -proxy-type "$proxytype" -verbosity 50
+try_binary() {
+	for x in "${@}"
+	do
+		type -a "$x" >/dev/null 2>&1 && { echo "$x"; return 0; } || false
+	done || return 1
+}
+
+binary=`try_binary "hola-proxy" "$HOME/go/bin/hola-proxy"`
+if [ -n "$binary" ]
+then
+	echo "country    $country"
+	echo "proxytype  $proxytype"
+	echo "proxy      127.0.0.1:$port"
+	echo
+	exec "$binary" -bind-address "127.0.0.1:$port" -country "$country" -proxy-type "$proxytype" -verbosity 50
+else
+	echo "hola-proxy binary cannot be found" >&2
+	exit 1
+fi
