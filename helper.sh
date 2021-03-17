@@ -39,7 +39,7 @@ try_binary() {
 	done || return 1
 }
 
-binary=`try_binary "hola-proxy" "$HOME/go/bin/hola-proxy"`
+binary=$(try_binary "hola-proxy" "$HOME/go/bin/hola-proxy")
 if [ -n "$binary" ]
 then
 	echo "country    $country"
