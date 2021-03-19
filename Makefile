@@ -12,6 +12,8 @@ src = $(wildcard *.go)
 native: bin-native
 all: bin-linux-amd64 bin-linux-386 bin-linux-arm \
 	bin-freebsd-amd64 bin-freebsd-386 bin-freebsd-arm \
+	bin-netbsd-amd64 bin-netbsd-386 \
+	bin-openbsd-amd64 bin-openbsd-386 \
 	bin-darwin-amd64 bin-darwin-arm64 \
 	bin-windows-amd64 bin-windows-386
 
@@ -22,6 +24,10 @@ bin-linux-arm: $(OUTSUFFIX).linux-arm
 bin-freebsd-amd64: $(OUTSUFFIX).freebsd-amd64
 bin-freebsd-386: $(OUTSUFFIX).freebsd-386
 bin-freebsd-arm: $(OUTSUFFIX).freebsd-arm
+bin-netbsd-amd64: $(OUTSUFFIX).netbsd-amd64
+bin-netbsd-386: $(OUTSUFFIX).netbsd-386
+bin-openbsd-amd64: $(OUTSUFFIX).openbsd-amd64
+bin-openbsd-386: $(OUTSUFFIX).openbsd-386
 bin-darwin-amd64: $(OUTSUFFIX).darwin-amd64
 bin-darwin-arm64: $(OUTSUFFIX).darwin-arm64
 bin-windows-amd64: $(OUTSUFFIX).windows-amd64.exe
@@ -47,6 +53,18 @@ $(OUTSUFFIX).freebsd-386: $(src)
 
 $(OUTSUFFIX).freebsd-arm: $(src)
 	CGO_ENABLED=0 GOOS=freebsd GOARCH=arm $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
+
+$(OUTSUFFIX).netbsd-amd64: $(src)
+	CGO_ENABLED=0 GOOS=netbsd GOARCH=amd64 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
+
+$(OUTSUFFIX).netbsd-386: $(src)
+	CGO_ENABLED=0 GOOS=netbsd GOARCH=386 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
+
+$(OUTSUFFIX).openbsd-amd64: $(src)
+	CGO_ENABLED=0 GOOS=openbsd GOARCH=amd64 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
+
+$(OUTSUFFIX).openbsd-386: $(src)
+	CGO_ENABLED=0 GOOS=openbsd GOARCH=386 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).darwin-amd64: $(src)
 	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
