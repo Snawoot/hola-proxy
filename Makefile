@@ -5,6 +5,8 @@ BUILDOPTS = -a -tags netgo
 LDFLAGS = -ldflags '-s -w -extldflags "-static" -X main.version=$(VERSION)'
 LDFLAGS_NATIVE = -ldflags '-s -w -X main.version=$(VERSION)'
 
+GO := go
+
 src = $(wildcard *.go)
 
 native: bin-native
@@ -25,46 +27,46 @@ bin-windows-amd64: $(OUTSUFFIX).windows-amd64.exe
 bin-windows-386: $(OUTSUFFIX).windows-386.exe
 
 $(OUTSUFFIX): $(src)
-	go build $(LDFLAGS_NATIVE) -o $@
+	$(GO) build $(LDFLAGS_NATIVE) -o $@
 
 $(OUTSUFFIX).linux-amd64: $(src)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).linux-386: $(src)
-	CGO_ENABLED=0 GOOS=linux GOARCH=386 go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=linux GOARCH=386 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).linux-arm: $(src)
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).freebsd-amd64: $(src)
-	CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).freebsd-386: $(src)
-	CGO_ENABLED=0 GOOS=freebsd GOARCH=386 go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=freebsd GOARCH=386 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).freebsd-arm: $(src)
-	CGO_ENABLED=0 GOOS=freebsd GOARCH=arm go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=freebsd GOARCH=arm $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).darwin-amd64: $(src)
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).windows-amd64.exe: $(src)
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).windows-386.exe: $(src)
-	CGO_ENABLED=0 GOOS=windows GOARCH=386 go build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=windows GOARCH=386 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 clean:
 	rm -f bin/*
 
 fmt:
-	go fmt ./...
+	$(GO) fmt ./...
 
 run:
-	go run $(LDFLAGS) .
+	$(GO) run $(LDFLAGS) .
 
 install:
-	go install $(LDFLAGS_NATIVE) .
+	$(GO) install $(LDFLAGS_NATIVE) .
 
 .PHONY: clean all native fmt install \
 	bin-native \
