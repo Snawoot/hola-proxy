@@ -15,7 +15,7 @@ all: bin-linux-amd64 bin-linux-386 bin-linux-arm \
 	bin-netbsd-amd64 bin-netbsd-386 \
 	bin-openbsd-amd64 bin-openbsd-386 \
 	bin-darwin-amd64 bin-darwin-arm64 \
-	bin-windows-amd64 bin-windows-386
+	bin-windows-amd64 bin-windows-386 bin-windows-arm
 
 bin-native: $(OUTSUFFIX)
 bin-linux-amd64: $(OUTSUFFIX).linux-amd64
@@ -32,6 +32,7 @@ bin-darwin-amd64: $(OUTSUFFIX).darwin-amd64
 bin-darwin-arm64: $(OUTSUFFIX).darwin-arm64
 bin-windows-amd64: $(OUTSUFFIX).windows-amd64.exe
 bin-windows-386: $(OUTSUFFIX).windows-386.exe
+bin-windows-arm: $(OUTSUFFIX).windows-arm.exe
 
 $(OUTSUFFIX): $(src)
 	$(GO) build $(LDFLAGS_NATIVE) -o $@
@@ -77,6 +78,9 @@ $(OUTSUFFIX).windows-amd64.exe: $(src)
 
 $(OUTSUFFIX).windows-386.exe: $(src)
 	CGO_ENABLED=0 GOOS=windows GOARCH=386 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
+
+$(OUTSUFFIX).windows-arm.exe: $(src)
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm GOARM=7 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 clean:
 	rm -f bin/*
