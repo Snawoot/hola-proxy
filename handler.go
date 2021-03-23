@@ -15,10 +15,10 @@ type ProxyHandler struct {
 	logger        *CondLogger
 	dialer        ContextDialer
 	httptransport http.RoundTripper
-	resolver      *Resolver
 }
 
 func NewProxyHandler(dialer ContextDialer, resolver *Resolver, logger *CondLogger) *ProxyHandler {
+	dialer = NewRetryDialer(dialer, resolver, logger)
 	httptransport := &http.Transport{
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
@@ -30,7 +30,6 @@ func NewProxyHandler(dialer ContextDialer, resolver *Resolver, logger *CondLogge
 		logger:        logger,
 		dialer:        dialer,
 		httptransport: httptransport,
-		resolver:      resolver,
 	}
 }
 

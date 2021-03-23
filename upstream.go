@@ -19,6 +19,8 @@ const (
 	PROXY_AUTHORIZATION_HEADER = "Proxy-Authorization"
 )
 
+var UpstreamBlockedError = errors.New("blocked by upstream")
+
 type ContextDialer interface {
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
@@ -104,6 +106,10 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 	}
 
 	if proxyResp.StatusCode != http.StatusOK {
+		if proxyResp.StatusCode == http.StatusForbidden &&
+			proxyResp.Header.Get("X-Hola-Error") == "Forbidden Host" {
+			return nil, UpstreamBlockedError
+		}
 		return nil, errors.New("Bad response from upstream proxy server")
 	}
 
