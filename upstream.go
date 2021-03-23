@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -22,6 +23,7 @@ const (
 var UpstreamBlockedError = errors.New("blocked by upstream")
 
 type ContextDialer interface {
+	Dial(network, address string) (net.Conn, error)
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
@@ -110,10 +112,14 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 			proxyResp.Header.Get("X-Hola-Error") == "Forbidden Host" {
 			return nil, UpstreamBlockedError
 		}
-		return nil, errors.New("Bad response from upstream proxy server")
+		return nil, errors.New(fmt.Sprintf("bad response from upstream proxy server: %s", proxyResp.Status))
 	}
 
 	return conn, nil
+}
+
+func (d *ProxyDialer) Dial(network, address string) (net.Conn, error) {
+	return d.DialContext(context.Background(), network, address)
 }
 
 func readResponse(r io.Reader, req *http.Request) (*http.Response, error) {

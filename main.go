@@ -6,8 +6,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
+
+	xproxy "golang.org/x/net/proxy"
 )
 
 var (
@@ -45,6 +48,7 @@ type CLIArgs struct {
 	resolver                                string
 	force_port_field                        string
 	showVersion                             bool
+	proxy									string
 }
 
 func parse_args() CLIArgs {
@@ -66,6 +70,7 @@ func parse_args() CLIArgs {
 			"See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
 	flag.BoolVar(&args.use_trial, "dont-use-trial", false, "use regular ports instead of trial ports") // would be nice to not show in help page
 	flag.BoolVar(&args.showVersion, "version", false, "show program version and exit")
+	flag.StringVar(&args.proxy, "proxy", "", "sets proxy to use for all dial-outs")
 	flag.Parse()
 	if args.country == "" {
 		arg_fail("Country can't be empty string.")
@@ -112,26 +117,40 @@ func run() int {
 		mainLogger.Critical("Unable to instantiate DNS resolver: %v", err)
 		return 6
 	}
+
+	var dialer ContextDialer = &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	if args.proxy != "" {
+		proxyURL, err := url.Parse(args.proxy)
+		if err != nil {
+			mainLogger.Critical("Unable to parse base proxy URL: %v", err)
+			return 6
+		}
+		pxDialer, err := xproxy.FromURL(proxyURL, dialer)
+		if err != nil {
+			mainLogger.Critical("Unable to instantiate base proxy dialer: %v", err)
+			return 7
+		}
+		dialer = pxDialer.(ContextDialer)
+	}
+
 	mainLogger.Info("Initializing configuration provider...")
 	auth, tunnels, err := CredService(args.rotate, args.timeout, args.country, args.proxy_type, credLogger)
 	if err != nil {
 		mainLogger.Critical("Unable to instantiate credential service: %v", err)
-		logWriter.Close()
 		return 4
 	}
 	endpoint, err := get_endpoint(tunnels, args.proxy_type, args.use_trial, args.force_port_field)
 	if err != nil {
 		mainLogger.Critical("Unable to determine proxy endpoint: %v", err)
-		logWriter.Close()
 		return 5
 	}
-	var dialer ContextDialer = NewProxyDialer(endpoint.NetAddr(), endpoint.TLSName, auth, &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-	})
+	handlerDialer := NewProxyDialer(endpoint.NetAddr(), endpoint.TLSName, auth, dialer)
 	mainLogger.Info("Endpoint: %s", endpoint.URL().String())
 	mainLogger.Info("Starting proxy server...")
-	handler := NewProxyHandler(dialer, resolver, proxyLogger)
+	handler := NewProxyHandler(handlerDialer, resolver, proxyLogger)
 	mainLogger.Info("Init complete.")
 	err = http.ListenAndServe(args.bind_address, handler)
 	mainLogger.Critical("Server terminated with a reason: %v", err)

@@ -37,3 +37,7 @@ func (d *RetryDialer) DialContext(ctx context.Context, network, address string) 
 	}
 	return conn, err
 }
+
+func (d *RetryDialer) Dial(network, address string) (net.Conn, error) {
+	return d.DialContext(context.Background(), network, address)
+}
