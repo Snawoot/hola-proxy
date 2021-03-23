@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -48,7 +49,7 @@ type CLIArgs struct {
 	resolver                                string
 	force_port_field                        string
 	showVersion                             bool
-	proxy									string
+	proxy                                   string
 }
 
 func parse_args() CLIArgs {
@@ -82,6 +83,15 @@ func parse_args() CLIArgs {
 		arg_fail("list-countries and list-proxies flags are mutually exclusive")
 	}
 	return args
+}
+
+func proxyFromURLWrapper(u *url.URL, next xproxy.Dialer) (xproxy.Dialer, error) {
+	cdialer, ok := next.(ContextDialer)
+	if !ok {
+		return nil, errors.New("only context dialers are accepted")
+	}
+
+	return ProxyDialerFromURL(u, cdialer)
 }
 
 func run() int {
@@ -123,6 +133,8 @@ func run() int {
 		KeepAlive: 30 * time.Second,
 	}
 	if args.proxy != "" {
+		xproxy.RegisterDialerType("http", proxyFromURLWrapper)
+		xproxy.RegisterDialerType("https", proxyFromURLWrapper)
 		proxyURL, err := url.Parse(args.proxy)
 		if err != nil {
 			mainLogger.Critical("Unable to parse base proxy URL: %v", err)

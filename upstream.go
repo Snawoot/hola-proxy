@@ -4,14 +4,16 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
+	"strings"
 )
 
 const (
@@ -22,8 +24,12 @@ const (
 
 var UpstreamBlockedError = errors.New("blocked by upstream")
 
-type ContextDialer interface {
+type Dialer interface {
 	Dial(network, address string) (net.Conn, error)
+}
+
+type ContextDialer interface {
+	Dialer
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
@@ -41,6 +47,39 @@ func NewProxyDialer(address, tlsServerName string, auth AuthProvider, nextDialer
 		auth:          auth,
 		next:          nextDialer,
 	}
+}
+
+func ProxyDialerFromURL(u *url.URL, next ContextDialer) (*ProxyDialer, error) {
+	host := u.Hostname()
+	port := u.Port()
+	tlsServerName := ""
+	var auth AuthProvider = nil
+
+	switch strings.ToLower(u.Scheme) {
+	case "http":
+		if port == "" {
+			port = "80"
+		}
+	case "https":
+		if port == "" {
+			port = "443"
+		}
+		tlsServerName = host
+	default:
+		return nil, errors.New("unsupported proxy type")
+	}
+
+	address := net.JoinHostPort(host, port)
+
+	if u.User != nil {
+		username := u.User.Username()
+		password, _ := u.User.Password()
+		authHeader := basic_auth_header(username, password)
+		auth = func() string {
+			return authHeader
+		}
+	}
+	return NewProxyDialer(address, tlsServerName, auth, next), nil
 }
 
 func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
