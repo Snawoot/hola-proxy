@@ -121,7 +121,7 @@ func (a *FallbackAgent) ToProxy() *url.URL {
 }
 
 func (a *FallbackAgent) Hostname() string {
-	return a.Name+AGENT_SUFFIX
+	return a.Name + AGENT_SUFFIX
 }
 
 func (a *FallbackAgent) NetAddr() string {

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"io"
 	"net"
@@ -23,18 +24,18 @@ type ContextDialer interface {
 }
 
 type ProxyDialer struct {
-	address string
+	address       string
 	tlsServerName string
-	auth AuthProvider
-	next  ContextDialer
+	auth          AuthProvider
+	next          ContextDialer
 }
 
 func NewProxyDialer(address, tlsServerName string, auth AuthProvider, nextDialer ContextDialer) *ProxyDialer {
 	return &ProxyDialer{
-		address: address,
+		address:       address,
 		tlsServerName: tlsServerName,
-		auth: auth,
-		next:  nextDialer,
+		auth:          auth,
+		next:          nextDialer,
 	}
 }
 
@@ -51,8 +52,24 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 	}
 
 	if d.tlsServerName != "" {
-		// TODO: skip SNI
-		conn = tls.Client(conn, &tls.Config{ServerName: d.tlsServerName})
+		// Custom cert verification logic:
+		// DO NOT send SNI extension of TLS ClientHello
+		// DO peer certificate verification against specified servername
+		conn = tls.Client(conn, &tls.Config{
+			ServerName:         "",
+			InsecureSkipVerify: true,
+			VerifyConnection: func(cs tls.ConnectionState) error {
+				opts := x509.VerifyOptions{
+					DNSName:       d.tlsServerName,
+					Intermediates: x509.NewCertPool(),
+				}
+				for _, cert := range cs.PeerCertificates[1:] {
+					opts.Intermediates.AddCert(cert)
+				}
+				_, err := cs.PeerCertificates[0].Verify(opts)
+				return err
+			},
+		})
 	}
 
 	req := &http.Request{
@@ -63,7 +80,7 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 		RequestURI: address,
 		Host:       address,
 		Header: http.Header{
-			PROXY_HOST_HEADER:          []string{address},
+			PROXY_HOST_HEADER: []string{address},
 		},
 	}
 
