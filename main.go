@@ -71,7 +71,9 @@ func parse_args() CLIArgs {
 			"See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
 	flag.BoolVar(&args.use_trial, "dont-use-trial", false, "use regular ports instead of trial ports") // would be nice to not show in help page
 	flag.BoolVar(&args.showVersion, "version", false, "show program version and exit")
-	flag.StringVar(&args.proxy, "proxy", "", "sets proxy to use for all dial-outs")
+	flag.StringVar(&args.proxy, "proxy", "", "sets base proxy to use for all dial-outs. " +
+		"Format: <http|https|socks5|socks5h>://[login:password@]host[:port] " +
+		"Examples: http://user:password@192.168.1.1:3128, socks5://10.0.0.1:1080")
 	flag.Parse()
 	if args.country == "" {
 		arg_fail("Country can't be empty string.")
