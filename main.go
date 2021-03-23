@@ -101,13 +101,6 @@ func run() int {
 		return 0
 	}
 
-	if args.list_countries {
-		return print_countries(args.timeout)
-	}
-	if args.list_proxies {
-		return print_proxies(args.country, args.proxy_type, args.limit, args.timeout)
-	}
-
 	logWriter := NewLogWriter(os.Stderr)
 	defer logWriter.Close()
 
@@ -120,13 +113,6 @@ func run() int {
 	proxyLogger := NewCondLogger(log.New(logWriter, "PROXY   : ",
 		log.LstdFlags|log.Lshortfile),
 		args.verbosity)
-	mainLogger.Info("hola-proxy client version %s is starting...", version)
-	mainLogger.Info("Constructing fallback DNS upstream...")
-	resolver, err := NewResolver(args.resolver, args.timeout)
-	if err != nil {
-		mainLogger.Critical("Unable to instantiate DNS resolver: %v", err)
-		return 6
-	}
 
 	var dialer ContextDialer = &net.Dialer{
 		Timeout:   30 * time.Second,
@@ -147,6 +133,21 @@ func run() int {
 		}
 		dialer = pxDialer.(ContextDialer)
 		UpdateHolaDialer(dialer)
+	}
+
+	if args.list_countries {
+		return print_countries(args.timeout)
+	}
+	if args.list_proxies {
+		return print_proxies(args.country, args.proxy_type, args.limit, args.timeout)
+	}
+
+	mainLogger.Info("hola-proxy client version %s is starting...", version)
+	mainLogger.Info("Constructing fallback DNS upstream...")
+	resolver, err := NewResolver(args.resolver, args.timeout)
+	if err != nil {
+		mainLogger.Critical("Unable to instantiate DNS resolver: %v", err)
+		return 6
 	}
 
 	mainLogger.Info("Initializing configuration provider...")
