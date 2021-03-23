@@ -252,7 +252,8 @@ func zgettunnels(ctx context.Context,
 }
 
 func fetchFallbackConfig(ctx context.Context) (*FallbackConfig, error) {
-	confRaw, err := do_req(ctx, &http.Client{}, "", FALLBACK_CONF_URL, nil, nil)
+	client := httpClientWithProxy(nil)
+	confRaw, err := do_req(ctx, client, "", FALLBACK_CONF_URL, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -327,6 +328,15 @@ func Tunnels(ctx context.Context,
 	return
 }
 
+var baseDialer ContextDialer = &net.Dialer{
+	Timeout:   30 * time.Second,
+	KeepAlive: 30 * time.Second,
+}
+
+func UpdateHolaDialer(dialer ContextDialer) {
+	baseDialer = dialer
+}
+
 // Returns default http client with a proxy override
 func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 	t := &http.Transport{
@@ -336,10 +346,7 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
-	var dialer ContextDialer = &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-	}
+	var dialer ContextDialer = baseDialer
 	if agent != nil {
 		dialer = NewProxyDialer(agent.NetAddr(), agent.Hostname(), nil, dialer)
 	}

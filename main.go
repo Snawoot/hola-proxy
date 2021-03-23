@@ -146,6 +146,7 @@ func run() int {
 			return 7
 		}
 		dialer = pxDialer.(ContextDialer)
+		UpdateHolaDialer(dialer)
 	}
 
 	mainLogger.Info("Initializing configuration provider...")
