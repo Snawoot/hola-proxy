@@ -24,15 +24,15 @@ type ContextDialer interface {
 
 type ProxyDialer struct {
 	address string
-	hostname string
+	tlsServerName string
 	auth AuthProvider
 	next  ContextDialer
 }
 
-func NewProxyDialer(address, hostname string, auth AuthProvider, nextDialer ContextDialer) *ProxyDialer {
+func NewProxyDialer(address, tlsServerName string, auth AuthProvider, nextDialer ContextDialer) *ProxyDialer {
 	return &ProxyDialer{
 		address: address,
-		hostname: hostname,
+		tlsServerName: tlsServerName,
 		auth: auth,
 		next:  nextDialer,
 	}
@@ -45,14 +45,15 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 		return nil, errors.New("bad network specified for DialContext: only tcp is supported")
 	}
 
-	authHeader := d.auth()
 	conn, err := d.next.DialContext(ctx, "tcp", d.address)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: skip SNI
-	conn = tls.Client(conn, &tls.Config{ServerName: d.hostname})
+	if d.tlsServerName != "" {
+		// TODO: skip SNI
+		conn = tls.Client(conn, &tls.Config{ServerName: d.tlsServerName})
+	}
 
 	req := &http.Request{
 		Method:     PROXY_CONNECT_METHOD,
@@ -63,8 +64,11 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 		Host:       address,
 		Header: http.Header{
 			PROXY_HOST_HEADER:          []string{address},
-			PROXY_AUTHORIZATION_HEADER: []string{authHeader},
 		},
+	}
+
+	if d.auth != nil {
+		req.Header.Set(PROXY_AUTHORIZATION_HEADER, d.auth())
 	}
 
 	rawreq, err := httputil.DumpRequest(req, false)

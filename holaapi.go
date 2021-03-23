@@ -120,6 +120,14 @@ func (a *FallbackAgent) ToProxy() *url.URL {
 	}
 }
 
+func (a *FallbackAgent) Hostname() string {
+	return a.Name+AGENT_SUFFIX
+}
+
+func (a *FallbackAgent) NetAddr() string {
+	return net.JoinHostPort(a.IP, fmt.Sprintf("%d", a.Port))
+}
+
 func do_req(ctx context.Context, client *http.Client, method, url string, query, data url.Values) ([]byte, error) {
 	var (
 		req *http.Request
@@ -328,19 +336,14 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
-	dialer := &net.Dialer{
+	var dialer ContextDialer = &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
 	}
-	if agent == nil {
-		t.DialContext = dialer.DialContext
-	} else {
-		t.Proxy = http.ProxyURL(agent.ToProxy())
-		addr := net.JoinHostPort(agent.IP, fmt.Sprintf("%d", agent.Port))
-		t.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
-			return dialer.DialContext(ctx, "tcp", addr)
-		}
+	if agent != nil {
+		dialer = NewProxyDialer(agent.NetAddr(), agent.Hostname(), nil, dialer)
 	}
+	t.DialContext = dialer.DialContext
 	return &http.Client{
 		Transport: t,
 	}
