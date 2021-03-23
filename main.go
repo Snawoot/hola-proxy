@@ -4,10 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
-	//    "os/signal"
-	//    "syscall"
+	"net"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -126,9 +125,13 @@ func run() int {
 		logWriter.Close()
 		return 5
 	}
+	var dialer ContextDialer = NewProxyDialer(endpoint.NetAddr(), endpoint.TLSName, auth, &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	})
 	mainLogger.Info("Endpoint: %s", endpoint.URL().String())
 	mainLogger.Info("Starting proxy server...")
-	handler := NewProxyHandler(endpoint, auth, resolver, proxyLogger)
+	handler := NewProxyHandler(dialer, resolver, proxyLogger)
 	mainLogger.Info("Init complete.")
 	err = http.ListenAndServe(args.bind_address, handler)
 	mainLogger.Critical("Server terminated with a reason: %v", err)

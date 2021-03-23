@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const COPY_BUF = 128 * 1024
+
 type Endpoint struct {
 	Host    string
 	Port    uint16
@@ -36,6 +38,10 @@ func (e *Endpoint) URL() *url.URL {
 			Host:   net.JoinHostPort(e.TLSName, fmt.Sprintf("%d", e.Port)),
 		}
 	}
+}
+
+func (e *Endpoint) NetAddr() string {
+	return net.JoinHostPort(e.Host, fmt.Sprintf("%d", e.Port))
 }
 
 func basic_auth_header(login, password string) string {
@@ -61,6 +67,36 @@ func proxy(ctx context.Context, left, right net.Conn) {
 	select {
 	case <-ctx.Done():
 		left.Close()
+		right.Close()
+	case <-groupdone:
+		return
+	}
+	<-groupdone
+	return
+}
+
+func proxyh2(ctx context.Context, leftreader io.ReadCloser, leftwriter io.Writer, right net.Conn) {
+	wg := sync.WaitGroup{}
+	ltr := func(dst net.Conn, src io.Reader) {
+		defer wg.Done()
+		io.Copy(dst, src)
+		dst.Close()
+	}
+	rtl := func(dst io.Writer, src io.Reader) {
+		defer wg.Done()
+		copyBody(dst, src)
+	}
+	wg.Add(2)
+	go ltr(right, leftreader)
+	go rtl(leftwriter, right)
+	groupdone := make(chan struct{}, 1)
+	go func() {
+		wg.Wait()
+		groupdone <- struct{}{}
+	}()
+	select {
+	case <-ctx.Done():
+		leftreader.Close()
 		right.Close()
 	case <-groupdone:
 		return
@@ -231,6 +267,30 @@ func hijack(hijackable interface{}) (net.Conn, *bufio.ReadWriter, error) {
 		return nil, nil, err
 	}
 	return conn, rw, nil
+}
+
+func flush(flusher interface{}) bool {
+	f, ok := flusher.(http.Flusher)
+	if !ok {
+		return false
+	}
+	f.Flush()
+	return true
+}
+
+func copyBody(wr io.Writer, body io.Reader) {
+	buf := make([]byte, COPY_BUF)
+	for {
+		bread, read_err := body.Read(buf)
+		var write_err error
+		if bread > 0 {
+			_, write_err = wr.Write(buf[:bread])
+			flush(wr)
+		}
+		if read_err != nil || write_err != nil {
+			break
+		}
+	}
 }
 
 func rewriteConnectReq(req *http.Request, resolver *Resolver) error {
