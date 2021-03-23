@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const COPY_BUF = 128 * 1024
+
 type Endpoint struct {
 	Host    string
 	Port    uint16
@@ -36,6 +38,10 @@ func (e *Endpoint) URL() *url.URL {
 			Host:   net.JoinHostPort(e.TLSName, fmt.Sprintf("%d", e.Port)),
 		}
 	}
+}
+
+func (e *Endpoint) NetAddr() string {
+	return net.JoinHostPort(e.Host, fmt.Sprintf("%d", e.Port))
 }
 
 func basic_auth_header(login, password string) string {
@@ -61,6 +67,36 @@ func proxy(ctx context.Context, left, right net.Conn) {
 	select {
 	case <-ctx.Done():
 		left.Close()
+		right.Close()
+	case <-groupdone:
+		return
+	}
+	<-groupdone
+	return
+}
+
+func proxyh2(ctx context.Context, leftreader io.ReadCloser, leftwriter io.Writer, right net.Conn) {
+	wg := sync.WaitGroup{}
+	ltr := func(dst net.Conn, src io.Reader) {
+		defer wg.Done()
+		io.Copy(dst, src)
+		dst.Close()
+	}
+	rtl := func(dst io.Writer, src io.Reader) {
+		defer wg.Done()
+		copyBody(dst, src)
+	}
+	wg.Add(2)
+	go ltr(right, leftreader)
+	go rtl(leftwriter, right)
+	groupdone := make(chan struct{}, 1)
+	go func() {
+		wg.Wait()
+		groupdone <- struct{}{}
+	}()
+	select {
+	case <-ctx.Done():
+		leftreader.Close()
 		right.Close()
 	case <-groupdone:
 		return
@@ -233,76 +269,26 @@ func hijack(hijackable interface{}) (net.Conn, *bufio.ReadWriter, error) {
 	return conn, rw, nil
 }
 
-func rewriteConnectReq(req *http.Request, resolver *Resolver) error {
-	origHost := req.Host
-	origAddr, origPort, err := net.SplitHostPort(origHost)
-	if err == nil {
-		origHost = origAddr
+func flush(flusher interface{}) bool {
+	f, ok := flusher.(http.Flusher)
+	if !ok {
+		return false
 	}
-	addrs := resolver.Resolve(origHost)
-	if len(addrs) == 0 {
-		return errors.New("Can't resolve host")
-	}
-	if origPort == "" {
-		req.URL.Host = addrs[0]
-		req.Host = addrs[0]
-		req.RequestURI = addrs[0]
-	} else {
-		req.URL.Host = net.JoinHostPort(addrs[0], origPort)
-		req.Host = net.JoinHostPort(addrs[0], origPort)
-		req.RequestURI = net.JoinHostPort(addrs[0], origPort)
-	}
-	return nil
+	f.Flush()
+	return true
 }
 
-func rewriteReq(req *http.Request, resolver *Resolver) error {
-	origHost := req.URL.Host
-	origAddr, origPort, err := net.SplitHostPort(origHost)
-	if err == nil {
-		origHost = origAddr
-	}
-	addrs := resolver.Resolve(origHost)
-	if len(addrs) == 0 {
-		return errors.New("Can't resolve host")
-	}
-	if origPort == "" {
-		req.URL.Host = addrs[0]
-		req.Host = addrs[0]
-	} else {
-		req.URL.Host = net.JoinHostPort(addrs[0], origPort)
-		req.Host = net.JoinHostPort(addrs[0], origPort)
-	}
-	req.Header.Set("Host", origHost)
-	return nil
-}
-
-func makeConnReq(uri string, resolver *Resolver) (*http.Request, error) {
-	parsed_url, err := url.Parse(uri)
-	if err != nil {
-		return nil, err
-	}
-	origAddr, origPort, err := net.SplitHostPort(parsed_url.Host)
-	if err != nil {
-		origAddr = parsed_url.Host
-		switch strings.ToLower(parsed_url.Scheme) {
-		case "https":
-			origPort = "443"
-		case "http":
-			origPort = "80"
-		default:
-			return nil, errors.New("Unknown scheme")
+func copyBody(wr io.Writer, body io.Reader) {
+	buf := make([]byte, COPY_BUF)
+	for {
+		bread, read_err := body.Read(buf)
+		var write_err error
+		if bread > 0 {
+			_, write_err = wr.Write(buf[:bread])
+			flush(wr)
+		}
+		if read_err != nil || write_err != nil {
+			break
 		}
 	}
-	addrs := resolver.Resolve(origAddr)
-	if len(addrs) == 0 {
-		return nil, errors.New("Can't resolve host")
-	}
-	new_uri := net.JoinHostPort(addrs[0], origPort)
-	req, err := http.NewRequest("CONNECT", "http://"+new_uri, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.RequestURI = new_uri
-	req.Host = new_uri
-	return req, nil
 }
