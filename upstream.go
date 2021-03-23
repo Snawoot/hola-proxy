@@ -7,10 +7,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
+	"strings"
 )
 
 const (
@@ -21,7 +24,12 @@ const (
 
 var UpstreamBlockedError = errors.New("blocked by upstream")
 
+type Dialer interface {
+	Dial(network, address string) (net.Conn, error)
+}
+
 type ContextDialer interface {
+	Dialer
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
@@ -39,6 +47,39 @@ func NewProxyDialer(address, tlsServerName string, auth AuthProvider, nextDialer
 		auth:          auth,
 		next:          nextDialer,
 	}
+}
+
+func ProxyDialerFromURL(u *url.URL, next ContextDialer) (*ProxyDialer, error) {
+	host := u.Hostname()
+	port := u.Port()
+	tlsServerName := ""
+	var auth AuthProvider = nil
+
+	switch strings.ToLower(u.Scheme) {
+	case "http":
+		if port == "" {
+			port = "80"
+		}
+	case "https":
+		if port == "" {
+			port = "443"
+		}
+		tlsServerName = host
+	default:
+		return nil, errors.New("unsupported proxy type")
+	}
+
+	address := net.JoinHostPort(host, port)
+
+	if u.User != nil {
+		username := u.User.Username()
+		password, _ := u.User.Password()
+		authHeader := basic_auth_header(username, password)
+		auth = func() string {
+			return authHeader
+		}
+	}
+	return NewProxyDialer(address, tlsServerName, auth, next), nil
 }
 
 func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
@@ -110,10 +151,14 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 			proxyResp.Header.Get("X-Hola-Error") == "Forbidden Host" {
 			return nil, UpstreamBlockedError
 		}
-		return nil, errors.New("Bad response from upstream proxy server")
+		return nil, errors.New(fmt.Sprintf("bad response from upstream proxy server: %s", proxyResp.Status))
 	}
 
 	return conn, nil
+}
+
+func (d *ProxyDialer) Dial(network, address string) (net.Conn, error) {
+	return d.DialContext(context.Background(), network, address)
 }
 
 func readResponse(r io.Reader, req *http.Request) (*http.Response, error) {
