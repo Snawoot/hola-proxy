@@ -70,6 +70,11 @@ docker run -d \
 sudo snap install hola-proxy
 ```
 
+# Make the binary executable (Linux only)
+```sh
+chmod +x hola-proxy
+```
+
 ## Usage
 
 List available countries:
