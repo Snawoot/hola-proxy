@@ -41,6 +41,12 @@ git clone https://ipfs.io/ipns/k51qzi5uqu5dkrgx0hozpy1tlggw5o0whtquyrjlc6pprhvbm
 
 Pre-built binaries are available [here](https://github.com/Snawoot/hola-proxy/releases/latest).
 
+Don't forget to make file executable on Unix-like systems (Linux, MacOS, \*BSD, Android). For your convenience rename downloaded file to `hola-proxy` and run within directory where you placed it:
+
+```sh
+chmod +x hola-proxy
+```
+
 #### Build from source
 
 Alternatively, you may install hola-proxy from source. Run the following within the source directory:
@@ -68,11 +74,6 @@ docker run -d \
 
 ```bash
 sudo snap install hola-proxy
-```
-
-# Make the binary executable (Linux only)
-```sh
-chmod +x hola-proxy
 ```
 
 ## Usage
