@@ -71,8 +71,8 @@ func parse_args() CLIArgs {
 			"See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
 	flag.BoolVar(&args.use_trial, "dont-use-trial", false, "use regular ports instead of trial ports") // would be nice to not show in help page
 	flag.BoolVar(&args.showVersion, "version", false, "show program version and exit")
-	flag.StringVar(&args.proxy, "proxy", "", "sets base proxy to use for all dial-outs. " +
-		"Format: <http|https|socks5|socks5h>://[login:password@]host[:port] " +
+	flag.StringVar(&args.proxy, "proxy", "", "sets base proxy to use for all dial-outs. "+
+		"Format: <http|https|socks5|socks5h>://[login:password@]host[:port] "+
 		"Examples: http://user:password@192.168.1.1:3128, socks5://10.0.0.1:1080")
 	flag.Parse()
 	if args.country == "" {
@@ -164,9 +164,10 @@ func run() int {
 		return 5
 	}
 	handlerDialer := NewProxyDialer(endpoint.NetAddr(), endpoint.TLSName, auth, dialer)
+	requestDialer := NewPlaintextDialer(endpoint.NetAddr(), endpoint.TLSName, dialer)
 	mainLogger.Info("Endpoint: %s", endpoint.URL().String())
 	mainLogger.Info("Starting proxy server...")
-	handler := NewProxyHandler(handlerDialer, resolver, proxyLogger)
+	handler := NewProxyHandler(handlerDialer, requestDialer, auth, resolver, proxyLogger)
 	mainLogger.Info("Init complete.")
 	err = http.ListenAndServe(args.bind_address, handler)
 	mainLogger.Critical("Server terminated with a reason: %v", err)

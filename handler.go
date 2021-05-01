@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -15,20 +16,28 @@ type ProxyHandler struct {
 	logger        *CondLogger
 	dialer        ContextDialer
 	httptransport http.RoundTripper
+	auth          AuthProvider
 }
 
-func NewProxyHandler(dialer ContextDialer, resolver *Resolver, logger *CondLogger) *ProxyHandler {
+func NewProxyHandler(dialer, requestDialer ContextDialer, auth AuthProvider, resolver *Resolver, logger *CondLogger) *ProxyHandler {
 	dialer = NewRetryDialer(dialer, resolver, logger)
 	httptransport := &http.Transport{
+		Proxy: func(_ *http.Request) (*url.URL, error) {
+			return &url.URL{
+				Scheme: "http",
+				Host:   "void",
+			}, nil
+		},
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		DialContext:           dialer.DialContext,
+		DialContext:           requestDialer.DialContext,
 	}
 	return &ProxyHandler{
 		logger:        logger,
 		dialer:        dialer,
+		auth:          auth,
 		httptransport: httptransport,
 	}
 }
@@ -74,6 +83,8 @@ func (s *ProxyHandler) HandleRequest(wr http.ResponseWriter, req *http.Request) 
 		req.URL.Scheme = "http" // We can't access :scheme pseudo-header, so assume http
 		req.URL.Host = req.Host
 	}
+	delHopHeaders(req.Header)
+	req.Header.Add("Proxy-Authorization", s.auth())
 	resp, err := s.httptransport.RoundTrip(req)
 	if err != nil {
 		s.logger.Error("HTTP fetch error: %v", err)
