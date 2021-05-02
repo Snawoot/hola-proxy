@@ -169,3 +169,7 @@ zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 | rotate | Duration | rotate user ID once per given period (default 1h0m0s) |
 | timeout | Duration | timeout for network operations (default 10s) |
 | verbosity | Number | logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20) |
+
+## See also
+
+* [Project wiki](https://github.com/Snawoot/hola-proxy/wiki)
