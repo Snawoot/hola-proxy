@@ -64,7 +64,7 @@ func parse_args() CLIArgs {
 		"(10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical)")
 	flag.DurationVar(&args.timeout, "timeout", 10*time.Second, "timeout for network operations")
 	flag.DurationVar(&args.rotate, "rotate", 1*time.Hour, "rotate user ID once per given period")
-	flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or peer or lum or virt or pool") // or skip but not mentioned
+	flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or lum") // or skip but not mentioned
 	// skip would be used something like this: `./bin/hola-proxy -proxy-type skip -force-port-field 24232 -country ua.peer` for debugging
 	flag.StringVar(&args.resolver, "resolver", "https://cloudflare-dns.com/dns-query",
 		"DNS/DoH/DoT resolver to workaround Hola blocked hosts. "+

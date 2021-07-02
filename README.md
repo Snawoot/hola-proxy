@@ -5,7 +5,7 @@
 Standalone Hola proxy client. Just run it and it'll start a plain HTTP proxy server forwarding traffic through Hola proxies of your choice.
 By default the application listens on 127.0.0.1:8080.
 
-Application is capable to forward traffic via proxies in datacenters (flag `-proxy-type direct`, default) or via peer proxies on residental IPs (consumer ISP) in that country (flag `-proxy-type pool` or `-proxy-type lum`).
+Application is capable to forward traffic via proxies in datacenters (flag `-proxy-type direct`, default) or via peer proxies on residental IPs (consumer ISP) in that country (flag `-proxy-type lum`).
 
 ---
 
@@ -164,7 +164,7 @@ zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 | list-countries | String | list available countries and exit |
 | list-proxies | - | output proxy list and exit |
 | proxy | String | sets base proxy to use for all dial-outs. Format: `<http\|https\|socks5\|socks5h>://[login:password@]host[:port]` Examples: `http://user:password@192.168.1.1:3128`, `socks5://10.0.0.1:1080` |
-| proxy-type | String | proxy type (Datacenter: direct, virt) (Residential: peer, lum, pool) (default "direct") |
+| proxy-type | String | proxy type (Datacenter: direct) (Residential: lum) (default "direct") |
 | resolver | String | DNS/DoH/DoT resolver to workaround Hola blocked hosts. See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format. (default "https://cloudflare-dns.com/dns-query") |
 | rotate | Duration | rotate user ID once per given period (default 1h0m0s) |
 | timeout | Duration | timeout for network operations (default 10s) |
