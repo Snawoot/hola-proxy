@@ -13,7 +13,7 @@ GO := go
 src = $(wildcard *.go)
 
 native: bin-native
-all: bin-linux-amd64 bin-linux-386 bin-linux-arm \
+all: bin-linux-amd64 bin-linux-386 bin-linux-arm bin-linux-arm64 \
 	bin-linux-mips bin-linux-mipsle bin-linux-mips64 bin-linux-mips64le \
 	bin-freebsd-amd64 bin-freebsd-386 bin-freebsd-arm \
 	bin-netbsd-amd64 bin-netbsd-386 \
