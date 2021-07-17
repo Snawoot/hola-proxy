@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -333,8 +335,14 @@ var baseDialer ContextDialer = &net.Dialer{
 	KeepAlive: 30 * time.Second,
 }
 
+var tlsConfig *tls.Config
+
 func UpdateHolaDialer(dialer ContextDialer) {
 	baseDialer = dialer
+}
+
+func UpdateHolaTLSConfig(config *tls.Config) {
+	tlsConfig = config
 }
 
 // Returns default http client with a proxy override
@@ -345,10 +353,15 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       tlsConfig,
 	}
 	var dialer ContextDialer = baseDialer
+	var rootCAs *x509.CertPool
+	if tlsConfig != nil {
+		rootCAs = tlsConfig.RootCAs
+	}
 	if agent != nil {
-		dialer = NewProxyDialer(agent.NetAddr(), agent.Hostname(), nil, dialer)
+		dialer = NewProxyDialer(agent.NetAddr(), agent.Hostname(), rootCAs, nil, dialer)
 	}
 	t.DialContext = dialer.DialContext
 	return &http.Client{

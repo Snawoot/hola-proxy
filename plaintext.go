@@ -12,13 +12,15 @@ type PlaintextDialer struct {
 	fixedAddress  string
 	tlsServerName string
 	next          ContextDialer
+	caPool        *x509.CertPool
 }
 
-func NewPlaintextDialer(address, tlsServerName string, next ContextDialer) *PlaintextDialer {
+func NewPlaintextDialer(address, tlsServerName string, caPool *x509.CertPool, next ContextDialer) *PlaintextDialer {
 	return &PlaintextDialer{
 		fixedAddress:  address,
 		tlsServerName: tlsServerName,
 		next:          next,
+		caPool:        caPool,
 	}
 }
 
@@ -45,6 +47,7 @@ func (d *PlaintextDialer) DialContext(ctx context.Context, network, address stri
 				opts := x509.VerifyOptions{
 					DNSName:       d.tlsServerName,
 					Intermediates: x509.NewCertPool(),
+					Roots:         d.caPool,
 				}
 				for _, cert := range cs.PeerCertificates[1:] {
 					opts.Intermediates.AddCert(cert)
