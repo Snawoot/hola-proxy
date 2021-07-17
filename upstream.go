@@ -38,18 +38,20 @@ type ProxyDialer struct {
 	tlsServerName string
 	auth          AuthProvider
 	next          ContextDialer
+	caPool        *x509.CertPool
 }
 
-func NewProxyDialer(address, tlsServerName string, auth AuthProvider, nextDialer ContextDialer) *ProxyDialer {
+func NewProxyDialer(address, tlsServerName string, caPool *x509.CertPool, auth AuthProvider, nextDialer ContextDialer) *ProxyDialer {
 	return &ProxyDialer{
 		address:       address,
 		tlsServerName: tlsServerName,
 		auth:          auth,
 		next:          nextDialer,
+		caPool:        caPool,
 	}
 }
 
-func ProxyDialerFromURL(u *url.URL, next ContextDialer) (*ProxyDialer, error) {
+func ProxyDialerFromURL(u *url.URL, caPool *x509.CertPool, next ContextDialer) (*ProxyDialer, error) {
 	host := u.Hostname()
 	port := u.Port()
 	tlsServerName := ""
@@ -79,7 +81,7 @@ func ProxyDialerFromURL(u *url.URL, next ContextDialer) (*ProxyDialer, error) {
 			return authHeader
 		}
 	}
-	return NewProxyDialer(address, tlsServerName, auth, next), nil
+	return NewProxyDialer(address, tlsServerName, caPool, auth, next), nil
 }
 
 func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
@@ -105,6 +107,7 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 				opts := x509.VerifyOptions{
 					DNSName:       d.tlsServerName,
 					Intermediates: x509.NewCertPool(),
+					Roots:         d.caPool,
 				}
 				for _, cert := range cs.PeerCertificates[1:] {
 					opts.Intermediates.AddCert(cert)

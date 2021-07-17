@@ -1,9 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -50,6 +53,7 @@ type CLIArgs struct {
 	force_port_field                        string
 	showVersion                             bool
 	proxy                                   string
+	caFile                                  string
 }
 
 func parse_args() CLIArgs {
@@ -74,6 +78,7 @@ func parse_args() CLIArgs {
 	flag.StringVar(&args.proxy, "proxy", "", "sets base proxy to use for all dial-outs. "+
 		"Format: <http|https|socks5|socks5h>://[login:password@]host[:port] "+
 		"Examples: http://user:password@192.168.1.1:3128, socks5://10.0.0.1:1080")
+	flag.StringVar(&args.caFile, "cafile", "", "use custom CA certificate bundle file")
 	flag.Parse()
 	if args.country == "" {
 		arg_fail("Country can't be empty string.")
@@ -85,15 +90,6 @@ func parse_args() CLIArgs {
 		arg_fail("list-countries and list-proxies flags are mutually exclusive")
 	}
 	return args
-}
-
-func proxyFromURLWrapper(u *url.URL, next xproxy.Dialer) (xproxy.Dialer, error) {
-	cdialer, ok := next.(ContextDialer)
-	if !ok {
-		return nil, errors.New("only context dialers are accepted")
-	}
-
-	return ProxyDialerFromURL(u, cdialer)
 }
 
 func run() int {
@@ -120,6 +116,33 @@ func run() int {
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
 	}
+
+	var caPool *x509.CertPool
+	if args.caFile != "" {
+		caPool = x509.NewCertPool()
+		certs, err := ioutil.ReadFile(args.caFile)
+		if err != nil {
+			mainLogger.Error("Can't load CA file: %v", err)
+			return 15
+		}
+		if ok := caPool.AppendCertsFromPEM(certs); !ok {
+			mainLogger.Error("Can't load certificates from CA file")
+			return 15
+		}
+		UpdateHolaTLSConfig(&tls.Config{
+			RootCAs: caPool,
+		})
+	}
+
+	proxyFromURLWrapper := func(u *url.URL, next xproxy.Dialer) (xproxy.Dialer, error) {
+		cdialer, ok := next.(ContextDialer)
+		if !ok {
+			return nil, errors.New("only context dialers are accepted")
+		}
+
+		return ProxyDialerFromURL(u, caPool, cdialer)
+	}
+
 	if args.proxy != "" {
 		xproxy.RegisterDialerType("http", proxyFromURLWrapper)
 		xproxy.RegisterDialerType("https", proxyFromURLWrapper)
@@ -163,8 +186,8 @@ func run() int {
 		mainLogger.Critical("Unable to determine proxy endpoint: %v", err)
 		return 5
 	}
-	handlerDialer := NewProxyDialer(endpoint.NetAddr(), endpoint.TLSName, auth, dialer)
-	requestDialer := NewPlaintextDialer(endpoint.NetAddr(), endpoint.TLSName, dialer)
+	handlerDialer := NewProxyDialer(endpoint.NetAddr(), endpoint.TLSName, caPool, auth, dialer)
+	requestDialer := NewPlaintextDialer(endpoint.NetAddr(), endpoint.TLSName, caPool, dialer)
 	mainLogger.Info("Endpoint: %s", endpoint.URL().String())
 	mainLogger.Info("Starting proxy server...")
 	handler := NewProxyHandler(handlerDialer, requestDialer, auth, resolver, proxyLogger)
