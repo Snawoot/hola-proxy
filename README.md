@@ -157,6 +157,7 @@ zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 | Argument | Type | Description |
 | -------- | ---- | ----------- |
 | bind-address | String | HTTP proxy address to listen to (default "127.0.0.1:8080") |
+| cafile | String | use custom CA certificate bundle file |
 | country | String | desired proxy location (default "us") |
 | dont-use-trial | - | use regular ports instead of trial ports |
 | force-port-field | Number | force specific port field/num (example 24232 or lum) |
