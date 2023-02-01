@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -132,14 +133,14 @@ func print_countries(timeout time.Duration) int {
 	return 0
 }
 
-func print_proxies(country string, proxy_type string, limit uint, timeout time.Duration) int {
+func print_proxies(logger *CondLogger, country string, proxy_type string, limit uint, timeout time.Duration) int {
 	var (
 		tunnels   *ZGetTunnelsResponse
 		user_uuid string
 		err       error
 	)
 	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
-		tunnels, user_uuid, err = Tunnels(ctx, client, country, proxy_type, limit)
+		tunnels, user_uuid, err = Tunnels(ctx, logger, client, country, proxy_type, limit)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with the fallback mechanism...\n", err)
 			return false
@@ -291,4 +292,12 @@ func copyBody(wr io.Writer, body io.Reader) {
 			break
 		}
 	}
+}
+
+func RandRange(low, hi float64) float64 {
+	if low >= hi {
+		panic("RandRange: low boundary is greater or equal to high boundary")
+	}
+	delta := hi - low
+	return low + rand.New(RandomSource).Float64()*delta
 }

@@ -66,7 +66,7 @@ func parse_args() CLIArgs {
 	flag.StringVar(&args.bind_address, "bind-address", "127.0.0.1:8080", "HTTP proxy listen address")
 	flag.IntVar(&args.verbosity, "verbosity", 20, "logging verbosity "+
 		"(10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical)")
-	flag.DurationVar(&args.timeout, "timeout", 10*time.Second, "timeout for network operations")
+	flag.DurationVar(&args.timeout, "timeout", 35*time.Second, "timeout for network operations")
 	flag.DurationVar(&args.rotate, "rotate", 1*time.Hour, "rotate user ID once per given period")
 	flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or lum") // or skip but not mentioned
 	// skip would be used something like this: `./bin/hola-proxy -proxy-type skip -force-port-field 24232 -country ua.peer` for debugging
@@ -164,7 +164,7 @@ func run() int {
 		return print_countries(args.timeout)
 	}
 	if args.list_proxies {
-		return print_proxies(args.country, args.proxy_type, args.limit, args.timeout)
+		return print_proxies(mainLogger, args.country, args.proxy_type, args.limit, args.timeout)
 	}
 
 	mainLogger.Info("hola-proxy client version %s is starting...", version)
