@@ -1,4 +1,4 @@
-FROM golang AS build
+FROM golang:1.19 AS build
 
 ARG GIT_DESC=undefined
 
