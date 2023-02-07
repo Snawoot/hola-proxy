@@ -54,6 +54,8 @@ type CLIArgs struct {
 	showVersion                             bool
 	proxy                                   string
 	caFile                                  string
+	minPause                                time.Duration
+	maxPause                                time.Duration
 }
 
 func parse_args() CLIArgs {
@@ -68,6 +70,8 @@ func parse_args() CLIArgs {
 		"(10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical)")
 	flag.DurationVar(&args.timeout, "timeout", 35*time.Second, "timeout for network operations")
 	flag.DurationVar(&args.rotate, "rotate", 1*time.Hour, "rotate user ID once per given period")
+	flag.DurationVar(&args.minPause, "min-pause", 10*time.Second, "minimum added delay between registration and tunnel request")
+	flag.DurationVar(&args.maxPause, "max-pause", 25*time.Second, "maximum added delay between registration and tunnel request")
 	flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or lum") // or skip but not mentioned
 	// skip would be used something like this: `./bin/hola-proxy -proxy-type skip -force-port-field 24232 -country ua.peer` for debugging
 	flag.StringVar(&args.resolver, "resolver", "https://cloudflare-dns.com/dns-query",
@@ -164,7 +168,7 @@ func run() int {
 		return print_countries(args.timeout)
 	}
 	if args.list_proxies {
-		return print_proxies(mainLogger, args.country, args.proxy_type, args.limit, args.timeout)
+		return print_proxies(mainLogger, args.country, args.proxy_type, args.limit, args.timeout, args.minPause, args.maxPause)
 	}
 
 	mainLogger.Info("hola-proxy client version %s is starting...", version)
@@ -176,7 +180,8 @@ func run() int {
 	}
 
 	mainLogger.Info("Initializing configuration provider...")
-	auth, tunnels, err := CredService(args.rotate, args.timeout, args.country, args.proxy_type, credLogger)
+	auth, tunnels, err := CredService(args.rotate, args.timeout, args.country, args.proxy_type, credLogger,
+		args.minPause, args.maxPause)
 	if err != nil {
 		mainLogger.Critical("Unable to instantiate credential service: %v", err)
 		return 4

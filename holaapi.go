@@ -35,9 +35,6 @@ const LOGIN_PREFIX = "user-uuid-"
 const FALLBACK_CONF_URL = "https://www.dropbox.com/s/jemizcvpmf2qb9v/cloud_failover.conf?dl=1"
 const AGENT_SUFFIX = ".hola.org"
 
-const MinTunnelsPause = 10 * time.Second
-const MaxTunnelsPause = 25 * time.Second
-
 var TemporaryBanError = errors.New("temporary ban detected")
 var PermanentBanError = errors.New("permanent ban detected")
 
@@ -322,7 +319,8 @@ func Tunnels(ctx context.Context,
 	client *http.Client,
 	country string,
 	proxy_type string,
-	limit uint) (res *ZGetTunnelsResponse, user_uuid string, reterr error) {
+	limit uint,
+	minPause, maxPause time.Duration) (res *ZGetTunnelsResponse, user_uuid string, reterr error) {
 	u := uuid.New()
 	user_uuid = hex.EncodeToString(u[:])
 	initres, err := background_init(ctx, client, user_uuid)
@@ -330,7 +328,7 @@ func Tunnels(ctx context.Context,
 		reterr = err
 		return
 	}
-	sleepDuration := time.Duration(RandRange(float64(MinTunnelsPause), float64(MaxTunnelsPause)))
+	sleepDuration := time.Duration(RandRange(int64(minPause), int64(maxPause)))
 	logger.Info("Sleeping for %v...", sleepDuration)
 	time.Sleep(sleepDuration)
 	res, reterr = zgettunnels(ctx, client, user_uuid, initres.Key, country, proxy_type, limit)
