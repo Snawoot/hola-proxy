@@ -164,6 +164,8 @@ zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 | limit | Unsigned Integer (Number) | amount of proxies in retrieved list (default 3) |
 | list-countries | String | list available countries and exit |
 | list-proxies | - | output proxy list and exit |
+| max-pause | Duration | maximum added delay between registration and tunnel request (default 25s) |
+| min-pause | Duration | minimum added delay between registration and tunnel request (default 10s) |
 | proxy | String | sets base proxy to use for all dial-outs. Format: `<http\|https\|socks5\|socks5h>://[login:password@]host[:port]` Examples: `http://user:password@192.168.1.1:3128`, `socks5://10.0.0.1:1080` |
 | proxy-type | String | proxy type (Datacenter: direct) (Residential: lum) (default "direct") |
 | resolver | String | DNS/DoH/DoT resolver to workaround Hola blocked hosts. See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format. (default "https://cloudflare-dns.com/dns-query") |
