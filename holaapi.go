@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/campoy/unique"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
 )
 
@@ -37,6 +38,7 @@ const AGENT_SUFFIX = ".hola.org"
 
 var TemporaryBanError = errors.New("temporary ban detected")
 var PermanentBanError = errors.New("permanent ban detected")
+var EmptyResponseError = errors.New("empty response")
 
 type CountryList []string
 
@@ -248,7 +250,13 @@ func zgettunnels(ctx context.Context,
 		reterr = err
 		return
 	}
-	reterr = json.Unmarshal(data, &tunnels)
+	err = json.Unmarshal(data, &tunnels)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmashal zgettunnels response: %w", err)
+	}
+	if len(tunnels.IPList) == 0 {
+		return nil, EmptyResponseError
+	}
 	res = &tunnels
 	return
 }
@@ -320,18 +328,41 @@ func Tunnels(ctx context.Context,
 	country string,
 	proxy_type string,
 	limit uint,
-	minPause, maxPause time.Duration) (res *ZGetTunnelsResponse, user_uuid string, reterr error) {
+	timeout time.Duration,
+	backoffInitial time.Duration,
+	backoffDeadline time.Duration,
+) (res *ZGetTunnelsResponse, user_uuid string, reterr error) {
 	u := uuid.New()
 	user_uuid = hex.EncodeToString(u[:])
-	initres, err := background_init(ctx, client, user_uuid)
+	ctx1, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	initres, err := background_init(ctx1, client, user_uuid)
 	if err != nil {
 		reterr = err
 		return
 	}
-	sleepDuration := time.Duration(RandRange(int64(minPause), int64(maxPause)))
-	logger.Info("Sleeping for %v...", sleepDuration)
-	time.Sleep(sleepDuration)
-	res, reterr = zgettunnels(ctx, client, user_uuid, initres.Key, country, proxy_type, limit)
+	var bo backoff.BackOff = &backoff.ExponentialBackOff{
+		InitialInterval:     backoffInitial,
+		RandomizationFactor: 0.5,
+		Multiplier:          1.5,
+		MaxInterval:         10 * time.Minute,
+		MaxElapsedTime:      backoffDeadline,
+		Stop:                backoff.Stop,
+		Clock:               backoff.SystemClock,
+	}
+	bo = backoff.WithContext(bo, ctx)
+	err = backoff.RetryNotify(func() error {
+		ctx1, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		res, reterr = zgettunnels(ctx1, client, user_uuid, initres.Key, country, proxy_type, limit)
+		return reterr
+	}, bo, func(err error, dur time.Duration) {
+		logger.Info("zgettunnels error: %v; will retry after %v", err, dur.Truncate(time.Millisecond))
+	})
+	if err != nil {
+		logger.Error("All attempts failed: %v", err)
+		return nil, "", err
+	}
 	return
 }
 
@@ -374,19 +405,18 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 	}
 }
 
-func EnsureTransaction(baseCtx context.Context, txnTimeout time.Duration, txn func(context.Context, *http.Client) bool) (bool, error) {
+func EnsureTransaction(ctx context.Context, getFBTimeout time.Duration, txn func(context.Context, *http.Client) bool) (bool, error) {
 	client := httpClientWithProxy(nil)
 	defer client.CloseIdleConnections()
-
-	ctx, cancel := context.WithTimeout(baseCtx, txnTimeout)
-	defer cancel()
 
 	if txn(ctx, client) {
 		return true, nil
 	}
 
 	// Fallback needed
-	fbc, err := GetFallbackProxies(baseCtx)
+	getFBCtx, cancel := context.WithTimeout(ctx, getFBTimeout)
+	defer cancel()
+	fbc, err := GetFallbackProxies(getFBCtx)
 	if err != nil {
 		return false, err
 	}
@@ -394,10 +424,6 @@ func EnsureTransaction(baseCtx context.Context, txnTimeout time.Duration, txn fu
 	for _, agent := range fbc.Agents {
 		client = httpClientWithProxy(&agent)
 		defer client.CloseIdleConnections()
-
-		ctx, cancel = context.WithTimeout(baseCtx, txnTimeout)
-		defer cancel()
-
 		if txn(ctx, client) {
 			return true, nil
 		}
