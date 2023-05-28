@@ -135,7 +135,7 @@ func print_countries(timeout time.Duration) int {
 	return 0
 }
 
-func print_proxies(logger *CondLogger, country string, proxy_type string,
+func print_proxies(logger *CondLogger, extVer, country string, proxy_type string,
 	limit uint, timeout time.Duration, backoffInitial time.Duration, backoffDeadline time.Duration,
 ) int {
 	var (
@@ -144,7 +144,7 @@ func print_proxies(logger *CondLogger, country string, proxy_type string,
 		err       error
 	)
 	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
-		tunnels, user_uuid, err = Tunnels(ctx, logger, client, country, proxy_type, limit, timeout, backoffInitial, backoffDeadline)
+		tunnels, user_uuid, err = Tunnels(ctx, logger, client, extVer, country, proxy_type, limit, timeout, backoffInitial, backoffDeadline)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with the fallback mechanism...\n", err)
 			return false

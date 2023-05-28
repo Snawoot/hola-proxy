@@ -25,7 +25,6 @@ import (
 )
 
 const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
-const EXT_VER = "1.210.946"
 const EXT_BROWSER = "chrome"
 const PRODUCT = "cws"
 const CCGI_URL = "https://client.hola.org/client_cgi/"
@@ -193,10 +192,10 @@ func VPNCountries(ctx context.Context, client *http.Client) (res CountryList, er
 	return
 }
 
-func background_init(ctx context.Context, client *http.Client, user_uuid string) (res BgInitResponse, reterr error) {
+func background_init(ctx context.Context, client *http.Client, extVer, user_uuid string) (res BgInitResponse, reterr error) {
 	post_data := make(url.Values)
 	post_data.Add("login", "1")
-	post_data.Add("ver", EXT_VER)
+	post_data.Add("ver", extVer)
 	qs := make(url.Values)
 	qs.Add("uuid", user_uuid)
 	resp, err := do_req(ctx, client, "POST", BG_INIT_URL, qs, post_data)
@@ -220,6 +219,7 @@ func zgettunnels(ctx context.Context,
 	client *http.Client,
 	user_uuid string,
 	session_key int64,
+	extVer string,
 	country string,
 	proxy_type string,
 	limit uint) (res *ZGetTunnelsResponse, reterr error) {
@@ -239,7 +239,7 @@ func zgettunnels(ctx context.Context,
 	}
 	params.Add("limit", strconv.FormatInt(int64(limit), 10))
 	params.Add("ping_id", strconv.FormatFloat(rand.New(RandomSource).Float64(), 'f', -1, 64))
-	params.Add("ext_ver", EXT_VER)
+	params.Add("ext_ver", extVer)
 	params.Add("browser", EXT_BROWSER)
 	params.Add("product", PRODUCT)
 	params.Add("uuid", user_uuid)
@@ -325,6 +325,7 @@ func GetFallbackProxies(ctx context.Context) (*FallbackConfig, error) {
 func Tunnels(ctx context.Context,
 	logger *CondLogger,
 	client *http.Client,
+	extVer string,
 	country string,
 	proxy_type string,
 	limit uint,
@@ -336,7 +337,7 @@ func Tunnels(ctx context.Context,
 	user_uuid = hex.EncodeToString(u[:])
 	ctx1, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	initres, err := background_init(ctx1, client, user_uuid)
+	initres, err := background_init(ctx1, client, extVer, user_uuid)
 	if err != nil {
 		reterr = err
 		return
@@ -354,7 +355,7 @@ func Tunnels(ctx context.Context,
 	err = backoff.RetryNotify(func() error {
 		ctx1, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
-		res, reterr = zgettunnels(ctx1, client, user_uuid, initres.Key, country, proxy_type, limit)
+		res, reterr = zgettunnels(ctx1, client, user_uuid, initres.Key, extVer, country, proxy_type, limit)
 		return reterr
 	}, bo, func(err error, dur time.Duration) {
 		logger.Info("zgettunnels error: %v; will retry after %v", err, dur.Truncate(time.Millisecond))
