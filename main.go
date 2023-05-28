@@ -42,6 +42,7 @@ func arg_fail(msg string) {
 }
 
 type CLIArgs struct {
+	extVer                                  string
 	country                                 string
 	list_countries, list_proxies, use_trial bool
 	limit                                   uint
@@ -62,6 +63,8 @@ type CLIArgs struct {
 
 func parse_args() CLIArgs {
 	var args CLIArgs
+	flag.StringVar(&args.extVer, "ext-ver", "999.999.999", "extension version to mimic in requests. "+
+		"Can be obtained from https://chrome.google.com/webstore/detail/hola-vpn-the-website-unbl/gkojfkhlekighikafcpjkiklfbnlmeio")
 	flag.StringVar(&args.force_port_field, "force-port-field", "", "force specific port field/num (example 24232 or lum)") // would be nice to not show in help page
 	flag.StringVar(&args.country, "country", "us", "desired proxy location")
 	flag.BoolVar(&args.list_countries, "list-countries", false, "list available countries and exit")
@@ -171,7 +174,7 @@ func run() int {
 	}
 
 	if args.list_proxies {
-		return print_proxies(mainLogger, args.country, args.proxy_type, args.limit, args.timeout,
+		return print_proxies(mainLogger, args.extVer, args.country, args.proxy_type, args.limit, args.timeout,
 			args.backoffInitial, args.backoffDeadline)
 	}
 
@@ -184,8 +187,8 @@ func run() int {
 	}
 
 	mainLogger.Info("Initializing configuration provider...")
-	auth, tunnels, err := CredService(args.rotate, args.timeout, args.country, args.proxy_type, credLogger,
-		args.backoffInitial, args.backoffDeadline)
+	auth, tunnels, err := CredService(args.rotate, args.timeout, args.extVer, args.country,
+		args.proxy_type, credLogger, args.backoffInitial, args.backoffDeadline)
 	if err != nil {
 		mainLogger.Critical("Unable to instantiate credential service: %v", err)
 		return 4

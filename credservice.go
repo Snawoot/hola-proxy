@@ -10,6 +10,7 @@ import (
 const DEFAULT_LIST_LIMIT = 3
 
 func CredService(interval, timeout time.Duration,
+	extVer string,
 	country string,
 	proxytype string,
 	logger *CondLogger,
@@ -26,7 +27,7 @@ func CredService(interval, timeout time.Duration,
 	}
 
 	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
-		tunnels, user_uuid, err = Tunnels(ctx, logger, client, country, proxytype,
+		tunnels, user_uuid, err = Tunnels(ctx, logger, client, extVer, country, proxytype,
 			DEFAULT_LIST_LIMIT, timeout, backoffInitial, backoffDeadline)
 		if err != nil {
 			logger.Error("Configuration bootstrap error: %v. Retrying with the fallback mechanism...", err)
@@ -57,7 +58,7 @@ func CredService(interval, timeout time.Duration,
 			<-ticker.C
 			logger.Info("Rotating credentials...")
 			tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
-				tuns, user_uuid, err = Tunnels(ctx, logger, client, country, proxytype,
+				tuns, user_uuid, err = Tunnels(ctx, logger, client, extVer, country, proxytype,
 					DEFAULT_LIST_LIMIT, timeout, backoffInitial, backoffDeadline)
 				if err != nil {
 					logger.Error("Credential rotation error: %v. Retrying with the fallback mechanism...", err)
