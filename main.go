@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -15,6 +16,10 @@ import (
 	"time"
 
 	xproxy "golang.org/x/net/proxy"
+)
+
+const (
+	HolaExtStoreID = "gkojfkhlekighikafcpjkiklfbnlmeio"
 )
 
 var (
@@ -63,7 +68,7 @@ type CLIArgs struct {
 
 func parse_args() CLIArgs {
 	var args CLIArgs
-	flag.StringVar(&args.extVer, "ext-ver", "999.999.999", "extension version to mimic in requests. "+
+	flag.StringVar(&args.extVer, "ext-ver", "", "extension version to mimic in requests. "+
 		"Can be obtained from https://chrome.google.com/webstore/detail/hola-vpn-the-website-unbl/gkojfkhlekighikafcpjkiklfbnlmeio")
 	flag.StringVar(&args.force_port_field, "force-port-field", "", "force specific port field/num (example 24232 or lum)") // would be nice to not show in help page
 	flag.StringVar(&args.country, "country", "us", "desired proxy location")
@@ -173,6 +178,18 @@ func run() int {
 		return print_countries(args.timeout)
 	}
 
+	if args.extVer == "" {
+		ctx, cl := context.WithTimeout(context.Background(), args.timeout)
+		defer cl()
+		extVer, err := GetExtVer(ctx, nil, HolaExtStoreID, dialer)
+		if err != nil {
+			mainLogger.Critical("Can't detect latest API version. Try to specify -ext-ver parameter")
+			return 8
+		}
+		args.extVer = extVer
+		mainLogger.Warning("Detected latest extension version: %q. Pass -ext-ver parameter to skip resolve and speedup startup", args.extVer)
+		cl()
+	}
 	if args.list_proxies {
 		return print_proxies(mainLogger, args.extVer, args.country, args.proxy_type, args.limit, args.timeout,
 			args.backoffInitial, args.backoffDeadline)
