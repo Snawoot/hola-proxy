@@ -183,7 +183,7 @@ func run() int {
 		defer cl()
 		extVer, err := GetExtVer(ctx, nil, HolaExtStoreID, dialer)
 		if err != nil {
-			mainLogger.Critical("Can't detect latest API version. Try to specify -ext-ver parameter")
+			mainLogger.Critical("Can't detect latest API version. Try to specify -ext-ver parameter. Error: %v", err)
 			return 8
 		}
 		args.extVer = extVer
