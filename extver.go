@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,6 +14,10 @@ import (
 
 var (
 	defaultProdVersion = "113.0"
+)
+
+var (
+	ErrNoVerData = errors.New("no version data returned")
 )
 
 type StoreExtUpdateResponse struct {
@@ -85,7 +90,7 @@ func GetExtVer(ctx context.Context,
 	}
 
 	reader := io.LimitReader(resp.Body, 64*1024)
-	var respData StoreExtUpdateResponse
+	var respData *StoreExtUpdateResponse
 
 	dec := xml.NewDecoder(reader)
 	err = dec.Decode(&respData)
@@ -93,5 +98,10 @@ func GetExtVer(ctx context.Context,
 		return "", fmt.Errorf("unmarshaling of chrome web store response failed: %w", err)
 	}
 
-	return respData.App.UpdateCheck.Version, nil
+	if respData != nil && respData.App != nil &&
+		respData.App.UpdateCheck != nil && respData.App.UpdateCheck.Version != "" {
+		return respData.App.UpdateCheck.Version, nil
+	}
+
+	return "", ErrNoVerData
 }
