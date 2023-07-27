@@ -39,15 +39,17 @@ type ProxyDialer struct {
 	auth          AuthProvider
 	next          ContextDialer
 	caPool        *x509.CertPool
+	hideSNI       bool
 }
 
-func NewProxyDialer(address, tlsServerName string, caPool *x509.CertPool, auth AuthProvider, nextDialer ContextDialer) *ProxyDialer {
+func NewProxyDialer(address, tlsServerName string, caPool *x509.CertPool, auth AuthProvider, hideSNI bool, nextDialer ContextDialer) *ProxyDialer {
 	return &ProxyDialer{
 		address:       address,
 		tlsServerName: tlsServerName,
 		auth:          auth,
 		next:          nextDialer,
 		caPool:        caPool,
+		hideSNI:       hideSNI,
 	}
 }
 
@@ -81,7 +83,7 @@ func ProxyDialerFromURL(u *url.URL, caPool *x509.CertPool, next ContextDialer) (
 			return authHeader
 		}
 	}
-	return NewProxyDialer(address, tlsServerName, caPool, auth, next), nil
+	return NewProxyDialer(address, tlsServerName, caPool, auth, false, next), nil
 }
 
 func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
@@ -100,8 +102,12 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 		// Custom cert verification logic:
 		// DO NOT send SNI extension of TLS ClientHello
 		// DO peer certificate verification against specified servername
+		sni := d.tlsServerName
+		if d.hideSNI {
+			sni = ""
+		}
 		conn = tls.Client(conn, &tls.Config{
-			ServerName:         "",
+			ServerName:         sni,
 			InsecureSkipVerify: true,
 			VerifyConnection: func(cs tls.ConnectionState) error {
 				opts := x509.VerifyOptions{
