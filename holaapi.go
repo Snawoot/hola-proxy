@@ -398,7 +398,7 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 		rootCAs = tlsConfig.RootCAs
 	}
 	if agent != nil {
-		dialer = NewProxyDialer(agent.NetAddr(), agent.Hostname(), rootCAs, nil, dialer)
+		dialer = NewProxyDialer(agent.NetAddr(), agent.Hostname(), rootCAs, nil, true, dialer)
 	}
 	t.DialContext = dialer.DialContext
 	return &http.Client{

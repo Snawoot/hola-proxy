@@ -13,14 +13,16 @@ type PlaintextDialer struct {
 	tlsServerName string
 	next          ContextDialer
 	caPool        *x509.CertPool
+	hideSNI       bool
 }
 
-func NewPlaintextDialer(address, tlsServerName string, caPool *x509.CertPool, next ContextDialer) *PlaintextDialer {
+func NewPlaintextDialer(address, tlsServerName string, caPool *x509.CertPool, hideSNI bool, next ContextDialer) *PlaintextDialer {
 	return &PlaintextDialer{
 		fixedAddress:  address,
 		tlsServerName: tlsServerName,
 		next:          next,
 		caPool:        caPool,
+		hideSNI:       hideSNI,
 	}
 }
 
@@ -40,8 +42,12 @@ func (d *PlaintextDialer) DialContext(ctx context.Context, network, address stri
 		// Custom cert verification logic:
 		// DO NOT send SNI extension of TLS ClientHello
 		// DO peer certificate verification against specified servername
+		sni := d.tlsServerName
+		if d.hideSNI {
+			sni = ""
+		}
 		conn = tls.Client(conn, &tls.Config{
-			ServerName:         "",
+			ServerName:         sni,
 			InsecureSkipVerify: true,
 			VerifyConnection: func(cs tls.ConnectionState) error {
 				opts := x509.VerifyOptions{

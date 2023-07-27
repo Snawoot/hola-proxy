@@ -64,6 +64,7 @@ type CLIArgs struct {
 	maxPause                                time.Duration
 	backoffInitial                          time.Duration
 	backoffDeadline                         time.Duration
+	hideSNI                                 bool
 }
 
 func parse_args() CLIArgs {
@@ -93,6 +94,7 @@ func parse_args() CLIArgs {
 		"Format: <http|https|socks5|socks5h>://[login:password@]host[:port] "+
 		"Examples: http://user:password@192.168.1.1:3128, socks5://10.0.0.1:1080")
 	flag.StringVar(&args.caFile, "cafile", "", "use custom CA certificate bundle file")
+	flag.BoolVar(&args.hideSNI, "hide-SNI", true, "hide SNI in TLS sessions with proxy server")
 	flag.Parse()
 	if args.country == "" {
 		arg_fail("Country can't be empty string.")
@@ -215,8 +217,8 @@ func run() int {
 		mainLogger.Critical("Unable to determine proxy endpoint: %v", err)
 		return 5
 	}
-	handlerDialer := NewProxyDialer(endpoint.NetAddr(), endpoint.TLSName, caPool, auth, dialer)
-	requestDialer := NewPlaintextDialer(endpoint.NetAddr(), endpoint.TLSName, caPool, dialer)
+	handlerDialer := NewProxyDialer(endpoint.NetAddr(), endpoint.TLSName, caPool, auth, args.hideSNI, dialer)
+	requestDialer := NewPlaintextDialer(endpoint.NetAddr(), endpoint.TLSName, caPool, args.hideSNI, dialer)
 	mainLogger.Info("Endpoint: %s", endpoint.URL().String())
 	mainLogger.Info("Starting proxy server...")
 	handler := NewProxyHandler(handlerDialer, requestDialer, auth, resolver, proxyLogger)
