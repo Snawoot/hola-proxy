@@ -16,7 +16,9 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/campoy/unique"
@@ -24,17 +26,17 @@ import (
 	"github.com/google/uuid"
 )
 
-const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
+const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 const EXT_BROWSER = "chrome"
 const PRODUCT = "cws"
 const CCGI_URL = "https://client.hola.org/client_cgi/"
 const VPN_COUNTRIES_URL = CCGI_URL + "vpn_countries.json"
 const BG_INIT_URL = CCGI_URL + "background_init"
 const ZGETTUNNELS_URL = CCGI_URL + "zgettunnels"
-const LOGIN_PREFIX = "user-uuid-"
 const FALLBACK_CONF_URL = "https://www.dropbox.com/s/jemizcvpmf2qb9v/cloud_failover.conf?dl=1"
 const AGENT_SUFFIX = ".hola.org"
 
+var LOGIN_TEMPLATE = template.Must(template.New("LOGIN_TEMPLATE").Parse("user-uuid-{{.uuid}}-is_prem-{{.prem}}"))
 var TemporaryBanError = errors.New("temporary ban detected")
 var PermanentBanError = errors.New("permanent ban detected")
 var EmptyResponseError = errors.New("empty response")
@@ -431,4 +433,13 @@ func EnsureTransaction(ctx context.Context, getFBTimeout time.Duration, txn func
 	}
 
 	return false, nil
+}
+
+func TemplateLogin(user_uuid string) string {
+	var b strings.Builder
+	LOGIN_TEMPLATE.Execute(&b, map[string]string{
+		"uuid": user_uuid,
+		"prem": "0",
+	})
+	return b.String()
 }
