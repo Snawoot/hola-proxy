@@ -44,8 +44,7 @@ func CredService(interval, timeout time.Duration,
 		logger.Critical("All attempts failed.")
 		return
 	}
-	auth_header = basic_auth_header(LOGIN_PREFIX+user_uuid,
-		tunnels.AgentKey)
+	auth_header = basic_auth_header(TemplateLogin(user_uuid), tunnels.AgentKey)
 	go func() {
 		var (
 			err       error
@@ -76,8 +75,7 @@ func CredService(interval, timeout time.Duration,
 				continue
 			}
 			(&mux).Lock()
-			auth_header = basic_auth_header(LOGIN_PREFIX+user_uuid,
-				tuns.AgentKey)
+			auth_header = basic_auth_header(TemplateLogin(user_uuid), tuns.AgentKey)
 			(&mux).Unlock()
 			logger.Info("Credentials rotated successfully.")
 		}

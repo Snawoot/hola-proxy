@@ -160,7 +160,7 @@ func print_proxies(logger *CondLogger, extVer, country string, proxy_type string
 		return 3
 	}
 	wr := csv.NewWriter(os.Stdout)
-	login := LOGIN_PREFIX + user_uuid
+	login := TemplateLogin(user_uuid)
 	password := tunnels.AgentKey
 	fmt.Println("Login:", login)
 	fmt.Println("Password:", password)
