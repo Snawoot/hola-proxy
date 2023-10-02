@@ -178,3 +178,4 @@ zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 ## See also
 
 * [Project wiki](https://github.com/Snawoot/hola-proxy/wiki)
+* [Community in Telegram](https://t.me/alternative_proxy)
