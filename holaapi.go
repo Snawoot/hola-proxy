@@ -26,7 +26,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 const EXT_BROWSER = "chrome"
 const PRODUCT = "cws"
 const CCGI_URL = "https://client.hola.org/client_cgi/"
@@ -40,6 +39,16 @@ var LOGIN_TEMPLATE = template.Must(template.New("LOGIN_TEMPLATE").Parse("user-uu
 var TemporaryBanError = errors.New("temporary ban detected")
 var PermanentBanError = errors.New("permanent ban detected")
 var EmptyResponseError = errors.New("empty response")
+
+var userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/118.0"
+
+func SetUserAgent(ua string) {
+	userAgent = ua
+}
+
+func GetUserAgent() string {
+	return userAgent
+}
 
 type CountryList []string
 
@@ -158,7 +167,7 @@ func do_req(ctx context.Context, client *http.Client, method, url string, query,
 	if query != nil {
 		req.URL.RawQuery = query.Encode()
 	}
-	req.Header.Set("User-Agent", USER_AGENT)
+	req.Header.Set("User-Agent", userAgent)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

@@ -65,6 +65,7 @@ type CLIArgs struct {
 	backoffInitial                          time.Duration
 	backoffDeadline                         time.Duration
 	hideSNI                                 bool
+	userAgent                               string
 }
 
 func parse_args() CLIArgs {
@@ -94,6 +95,7 @@ func parse_args() CLIArgs {
 		"Format: <http|https|socks5|socks5h>://[login:password@]host[:port] "+
 		"Examples: http://user:password@192.168.1.1:3128, socks5://10.0.0.1:1080")
 	flag.StringVar(&args.caFile, "cafile", "", "use custom CA certificate bundle file")
+	flag.StringVar(&args.userAgent, "user-agent", GetUserAgent(), "value of User-Agent header in requests")
 	flag.BoolVar(&args.hideSNI, "hide-SNI", true, "hide SNI in TLS sessions with proxy server")
 	flag.Parse()
 	if args.country == "" {
@@ -175,6 +177,8 @@ func run() int {
 		dialer = pxDialer.(ContextDialer)
 		UpdateHolaDialer(dialer)
 	}
+
+	SetUserAgent(args.userAgent)
 
 	if args.list_countries {
 		return print_countries(args.timeout)

@@ -173,6 +173,7 @@ zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 | resolver | String | DNS/DoH/DoT resolver to workaround Hola blocked hosts. See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format. (default "https://cloudflare-dns.com/dns-query") |
 | rotate | Duration | rotate user ID once per given period (default 1h0m0s) |
 | timeout | Duration | timeout for network operations (default 35s) |
+| user-agent | String | value of User-Agent header in requests (default "Mozilla/5.0 (X11; Linux x86\_64; rv:109.0) Gecko/20100101 Firefox/118.0") |
 | verbosity | Number | logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20) |
 
 ## See also
