@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -14,6 +13,8 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+
+	tls "github.com/refraction-networking/utls"
 )
 
 const (
@@ -106,7 +107,7 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 		if d.hideSNI {
 			sni = ""
 		}
-		conn = tls.Client(conn, &tls.Config{
+		conn = tls.UClient(conn, &tls.Config{
 			ServerName:         sni,
 			InsecureSkipVerify: true,
 			VerifyConnection: func(cs tls.ConnectionState) error {
@@ -121,7 +122,7 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 				_, err := cs.PeerCertificates[0].Verify(opts)
 				return err
 			},
-		})
+		}, tls.HelloChrome_Auto)
 	}
 
 	req := &http.Request{
