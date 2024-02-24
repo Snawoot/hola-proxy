@@ -47,7 +47,7 @@ func (d *PlaintextDialer) DialContext(ctx context.Context, network, address stri
 		if d.hideSNI {
 			sni = ""
 		}
-		conn = tls.UClient(conn, &tls.Config{
+		tlsConn := tls.UClient(conn, &tls.Config{
 			ServerName:         sni,
 			InsecureSkipVerify: true,
 			VerifyConnection: func(cs tls.ConnectionState) error {
@@ -62,7 +62,12 @@ func (d *PlaintextDialer) DialContext(ctx context.Context, network, address stri
 				_, err := cs.PeerCertificates[0].Verify(opts)
 				return err
 			},
-		}, tls.HelloRandomized)
+		}, tls.HelloAndroid_11_OkHttp)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			conn.Close()
+			return nil, err
+		}
+		return tlsConn, nil
 	}
 	return conn, nil
 }
