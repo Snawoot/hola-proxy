@@ -424,7 +424,7 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 			cfg = *tlsConfig
 		}
 		cfg.ServerName = host
-		tlsConn := tls.UClient(conn, &cfg, tls.HelloRandomized)
+		tlsConn := tls.UClient(conn, &cfg, tls.HelloAndroid_11_OkHttp)
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
 			conn.Close()
 			return nil, fmt.Errorf("UClient handshake failed: %w", err)
