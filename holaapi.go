@@ -399,7 +399,6 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 	var dialer ContextDialer = baseDialer
@@ -414,22 +413,23 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 	t.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		host, _, err := net.SplitHostPort(addr)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("hostname extraction error: %w", err)
 		}
 		conn, err := dialer.DialContext(ctx, network, addr)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("can't prepare underlying connection for TLS session: %w", err)
 		}
 		var cfg tls.Config
 		if tlsConfig != nil {
 			cfg = *tlsConfig
 		}
 		cfg.ServerName = host
-		conn = tls.UClient(conn, &cfg, tls.HelloChrome_Auto)
-		if err := conn.(*tls.UConn).HandshakeContext(ctx); err != nil {
-			return nil, err
+		tlsConn := tls.UClient(conn, &cfg, tls.HelloRandomized)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("UClient handshake failed: %w", err)
 		}
-		return conn, nil
+		return tlsConn, nil
 	}
 	return &http.Client{
 		Transport: t,

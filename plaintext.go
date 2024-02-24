@@ -62,7 +62,7 @@ func (d *PlaintextDialer) DialContext(ctx context.Context, network, address stri
 				_, err := cs.PeerCertificates[0].Verify(opts)
 				return err
 			},
-		}, tls.HelloChrome_Auto)
+		}, tls.HelloRandomized)
 	}
 	return conn, nil
 }

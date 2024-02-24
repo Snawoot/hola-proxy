@@ -122,7 +122,7 @@ func (d *ProxyDialer) DialContext(ctx context.Context, network, address string) 
 				_, err := cs.PeerCertificates[0].Verify(opts)
 				return err
 			},
-		}, tls.HelloChrome_Auto)
+		}, tls.HelloRandomized)
 	}
 
 	req := &http.Request{
