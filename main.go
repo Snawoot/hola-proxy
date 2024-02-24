@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"flag"
@@ -15,6 +14,7 @@ import (
 	"os"
 	"time"
 
+	tls "github.com/refraction-networking/utls"
 	xproxy "golang.org/x/net/proxy"
 )
 
