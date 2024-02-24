@@ -18,40 +18,21 @@ jobs:
         with:
           fetch-depth: 0
       -
-        name: Read tag
-        id: tag
-        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-      -
         name: Setup Go
         uses: actions/setup-go@v4
         with:
           go-version: 'stable'
       -
+        name: Read tag
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      -
         name: Build
         run: >-
-          make -j $(nproc)
-          bin-linux-amd64 bin-linux-386 bin-linux-arm bin-linux-arm64
-          bin-linux-mips bin-linux-mipsle bin-linux-mips64 bin-linux-mips64le
-          bin-freebsd-amd64 bin-freebsd-386 bin-freebsd-arm
-          bin-netbsd-amd64 bin-netbsd-386
-          bin-openbsd-amd64 bin-openbsd-386
-          bin-darwin-amd64 bin-darwin-arm64
-          bin-android-arm bin-android-arm64
+          make -j $(nproc) allplus
           NDK_CC_ARM64="$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
           NDK_CC_ARM="$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang"
           VERSION=${{steps.tag.outputs.tag}}
-      -
-        name: Setup Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '~1.20'
-      -
-        name: Build
-        run: >-
-          make -j $(nproc)
-          bin-windows-amd64 bin-windows-386 bin-windows-arm
-          VERSION=${{steps.tag.outputs.tag}}
-          GO120=go
       -
         name: Release
         uses: softprops/action-gh-release@v1
