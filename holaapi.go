@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
@@ -24,6 +23,7 @@ import (
 	"github.com/campoy/unique"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
+	tls "github.com/refraction-networking/utls"
 )
 
 const EXT_BROWSER = "chrome"
@@ -399,9 +399,7 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       tlsConfig,
 	}
 	var dialer ContextDialer = baseDialer
 	var rootCAs *x509.CertPool
@@ -412,6 +410,27 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 		dialer = NewProxyDialer(agent.NetAddr(), agent.Hostname(), rootCAs, nil, true, dialer)
 	}
 	t.DialContext = dialer.DialContext
+	t.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, fmt.Errorf("hostname extraction error: %w", err)
+		}
+		conn, err := dialer.DialContext(ctx, network, addr)
+		if err != nil {
+			return nil, fmt.Errorf("can't prepare underlying connection for TLS session: %w", err)
+		}
+		var cfg tls.Config
+		if tlsConfig != nil {
+			cfg = *tlsConfig
+		}
+		cfg.ServerName = host
+		tlsConn := tls.UClient(conn, &cfg, tls.HelloAndroid_11_OkHttp)
+		if err := tlsConn.HandshakeContext(ctx); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("UClient handshake failed: %w", err)
+		}
+		return tlsConn, nil
+	}
 	return &http.Client{
 		Transport: t,
 	}
