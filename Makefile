@@ -9,7 +9,6 @@ NDK_CC_ARM = $(abspath ../../ndk-toolchain-arm/bin/arm-linux-androideabi-gcc)
 NDK_CC_ARM64 = $(abspath ../../ndk-toolchain-arm64/bin/aarch64-linux-android21-clang)
 
 GO := go
-GO120 := /usr/lib64/go/1.20/bin/go
 
 src = $(wildcard *.go */*.go */*/*.go) go.mod go.sum
 
@@ -104,13 +103,13 @@ $(OUTSUFFIX).darwin-arm64: $(src)
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).windows-amd64.exe: $(src)
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO120) build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).windows-386.exe: $(src)
-	CGO_ENABLED=0 GOOS=windows GOARCH=386 $(GO120) build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=windows GOARCH=386 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).windows-arm.exe: $(src)
-	CGO_ENABLED=0 GOOS=windows GOARCH=arm GOARM=7 $(GO120) build $(BUILDOPTS) $(LDFLAGS) -o $@
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm GOARM=7 $(GO) build $(BUILDOPTS) $(LDFLAGS) -o $@
 
 $(OUTSUFFIX).android-arm: $(src)
 	CC=$(NDK_CC_ARM) CGO_ENABLED=1 GOOS=android GOARCH=arm GOARM=7 $(GO) build $(LDFLAGS_NATIVE) -o $@
