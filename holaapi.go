@@ -40,7 +40,7 @@ var TemporaryBanError = errors.New("temporary ban detected")
 var PermanentBanError = errors.New("permanent ban detected")
 var EmptyResponseError = errors.New("empty response")
 
-var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
 
 func SetUserAgent(ua string) {
 	userAgent = ua
