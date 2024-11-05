@@ -64,6 +64,8 @@ type CLIArgs struct {
 	maxPause                                time.Duration
 	backoffInitial                          time.Duration
 	backoffDeadline                         time.Duration
+	initRetries                             int
+	initRetryInterval                       time.Duration
 	hideSNI                                 bool
 	userAgent                               string
 }
@@ -84,6 +86,8 @@ func parse_args() CLIArgs {
 	flag.DurationVar(&args.rotate, "rotate", 1*time.Hour, "rotate user ID once per given period")
 	flag.DurationVar(&args.backoffInitial, "backoff-initial", 3*time.Second, "initial average backoff delay for zgettunnels (randomized by +/-50%)")
 	flag.DurationVar(&args.backoffDeadline, "backoff-deadline", 5*time.Minute, "total duration of zgettunnels method attempts")
+	flag.IntVar(&args.initRetries, "init-retries", 0, "number of attempts for initialization steps, zero for unlimited retry")
+	flag.DurationVar(&args.initRetryInterval, "init-retry-interval", 5*time.Second, "delay between initialization retries")
 	flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or lum") // or skip but not mentioned
 	// skip would be used something like this: `./bin/hola-proxy -proxy-type skip -force-port-field 24232 -country ua.peer` for debugging
 	flag.StringVar(&args.resolver, "resolver", "https://cloudflare-dns.com/dns-query",
@@ -180,28 +184,32 @@ func run() int {
 
 	SetUserAgent(args.userAgent)
 
+	try := retryPolicy(args.initRetries, args.initRetryInterval, mainLogger)
+
 	if args.list_countries {
-		return print_countries(args.timeout)
+		return print_countries(try, args.timeout)
 	}
 
+	mainLogger.Info("hola-proxy client version %s is starting...", version)
 	if args.extVer == "" {
-		ctx, cl := context.WithTimeout(context.Background(), args.timeout)
-		defer cl()
-		extVer, err := GetExtVer(ctx, nil, HolaExtStoreID, dialer)
+		err := try("get latest version of browser extension", func() error {
+			ctx, cl := context.WithTimeout(context.Background(), args.timeout)
+			defer cl()
+			extVer, err := GetExtVer(ctx, nil, HolaExtStoreID, dialer)
+			args.extVer = extVer
+			return err
+		})
 		if err != nil {
 			mainLogger.Critical("Can't detect latest API version. Try to specify -ext-ver parameter. Error: %v", err)
 			return 8
 		}
-		args.extVer = extVer
 		mainLogger.Warning("Detected latest extension version: %q. Pass -ext-ver parameter to skip resolve and speedup startup", args.extVer)
-		cl()
 	}
 	if args.list_proxies {
-		return print_proxies(mainLogger, args.extVer, args.country, args.proxy_type, args.limit, args.timeout,
+		return print_proxies(try, mainLogger, args.extVer, args.country, args.proxy_type, args.limit, args.timeout,
 			args.backoffInitial, args.backoffDeadline)
 	}
 
-	mainLogger.Info("hola-proxy client version %s is starting...", version)
 	mainLogger.Info("Constructing fallback DNS upstream...")
 	resolver, err := NewResolver(args.resolver, args.timeout)
 	if err != nil {
@@ -209,11 +217,16 @@ func run() int {
 		return 6
 	}
 
-	mainLogger.Info("Initializing configuration provider...")
-	auth, tunnels, err := CredService(args.rotate, args.timeout, args.extVer, args.country,
-		args.proxy_type, credLogger, args.backoffInitial, args.backoffDeadline)
+	var (
+		auth AuthProvider
+		tunnels *ZGetTunnelsResponse
+	)
+	err = try("run credentials service", func() error {
+		auth, tunnels, err = CredService(args.rotate, args.timeout, args.extVer, args.country,
+			args.proxy_type, credLogger, args.backoffInitial, args.backoffDeadline)
+		return err
+	})
 	if err != nil {
-		mainLogger.Critical("Unable to instantiate credential service: %v", err)
 		return 4
 	}
 	endpoint, err := get_endpoint(tunnels, args.proxy_type, args.use_trial, args.force_port_field)
@@ -235,4 +248,25 @@ func run() int {
 
 func main() {
 	os.Exit(run())
+}
+
+func retryPolicy(retries int, retryInterval time.Duration, logger *CondLogger) func(string, func() error) error {
+	return func(name string, f func() error) error {
+		var err error
+		for i := 1; retries <= 0 || i <= retries; i++ {
+			if i > 1 {
+				logger.Warning("Retrying action %q in %v...", name, retryInterval)
+				time.Sleep(retryInterval)
+			}
+			logger.Info("Attempting action %q, attempt #%d...", name, i)
+			err = f()
+			if err == nil {
+				logger.Info("Action %q succeeded on attempt #%d", name, i)
+				return nil
+			}
+			logger.Warning("Action %q failed: %v", name, err)
+		}
+		logger.Critical("All attempts for action %q have failed. Last error: %v", name, err)
+		return err
+	}
 }
