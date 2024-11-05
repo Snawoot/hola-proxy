@@ -1,5 +1,5 @@
 name: hola-proxy
-version: '1.13.4'
+version: '1.14.0'
 summary: Standalone Hola proxy client.
 description: |
   Standalone Hola proxy client. Just run it and it'll start plain HTTP proxy server forwarding traffic via Hola proxies of your choice.
