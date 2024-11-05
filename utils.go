@@ -106,27 +106,33 @@ func proxyh2(ctx context.Context, leftreader io.ReadCloser, leftwriter io.Writer
 	return
 }
 
-func print_countries(timeout time.Duration) int {
+func print_countries(try func(string, func() error) error, timeout time.Duration) int {
 	var (
 		countries CountryList
 		err       error
+		tx_res    bool
+		tx_err    error
 	)
-	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
-		ctx1, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-		countries, err = VPNCountries(ctx1, client)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with the fallback mechanism...\n", err)
-			return false
+	err = try("list VPN countries", func() error {
+		tx_res, tx_err = EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
+			ctx1, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+			countries, err = VPNCountries(ctx1, client)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with the fallback mechanism...\n", err)
+				return false
+			}
+			return true
+		})
+		if tx_err != nil {
+			return fmt.Errorf("transaction recovery mechanism failure: %v", err)
 		}
-		return true
+		if !tx_res {
+			return errors.New("all fallback proxies failed.")
+		}
+		return nil
 	})
-	if tx_err != nil {
-		fmt.Fprintf(os.Stderr, "Transaction recovery mechanism failure: %v.\n", tx_err)
-		return 4
-	}
-	if !tx_res {
-		fmt.Fprintf(os.Stderr, "All attempts failed.")
+	if err != nil {
 		return 3
 	}
 	for _, code := range countries {
@@ -135,28 +141,34 @@ func print_countries(timeout time.Duration) int {
 	return 0
 }
 
-func print_proxies(logger *CondLogger, extVer, country string, proxy_type string,
+func print_proxies(try func(string, func() error) error, logger *CondLogger, extVer, country string, proxy_type string,
 	limit uint, timeout time.Duration, backoffInitial time.Duration, backoffDeadline time.Duration,
 ) int {
 	var (
 		tunnels   *ZGetTunnelsResponse
 		user_uuid string
 		err       error
+		tx_res    bool
+		tx_err    error
 	)
-	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
-		tunnels, user_uuid, err = Tunnels(ctx, logger, client, extVer, country, proxy_type, limit, timeout, backoffInitial, backoffDeadline)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with the fallback mechanism...\n", err)
-			return false
+	err = try("list proxies", func() error {
+		tx_res, tx_err = EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
+			tunnels, user_uuid, err = Tunnels(ctx, logger, client, extVer, country, proxy_type, limit, timeout, backoffInitial, backoffDeadline)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Transaction error: %v. Retrying with the fallback mechanism...\n", err)
+				return false
+			}
+			return true
+		})
+		if tx_err != nil {
+			return fmt.Errorf("transaction recovery mechanism failure: %v", err)
 		}
-		return true
+		if !tx_res {
+			return errors.New("all fallback proxies failed.")
+		}
+		return nil
 	})
-	if tx_err != nil {
-		fmt.Fprintf(os.Stderr, "Transaction recovery mechanism failure: %v.\n", tx_err)
-		return 4
-	}
-	if !tx_res {
-		fmt.Fprintf(os.Stderr, "All attempts failed.")
+	if err != nil {
 		return 3
 	}
 	wr := csv.NewWriter(os.Stdout)
