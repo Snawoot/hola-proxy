@@ -165,6 +165,8 @@ zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 | ext-ver | String | extension version to mimic in requests. Can be obtained from https://chrome.google.com/webstore/detail/hola-vpn-the-website-unbl/gkojfkhlekighikafcpjkiklfbnlmeio (default "999.999.999") |
 | force-port-field | Number | force specific port field/num (example 24232 or lum) |
 | hide-SNI | Boolean | hide SNI in TLS sessions with proxy server (default true) |
+| init-retries | Number | number of attempts for initialization steps, zero for unlimited retry |
+| init-retry-interval | Duration | delay between initialization retries (default 5s) |
 | limit | Unsigned Integer (Number) | amount of proxies in retrieved list (default 3) |
 | list-countries | String | list available countries and exit |
 | list-proxies | - | output proxy list and exit |
