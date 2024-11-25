@@ -32,8 +32,12 @@ const CCGI_URL = "https://client.hola.org/client_cgi/"
 const VPN_COUNTRIES_URL = CCGI_URL + "vpn_countries.json"
 const BG_INIT_URL = CCGI_URL + "background_init"
 const ZGETTUNNELS_URL = CCGI_URL + "zgettunnels"
-const FALLBACK_CONF_URL = "https://www.dropbox.com/s/jemizcvpmf2qb9v/cloud_failover.conf?dl=1"
 const AGENT_SUFFIX = ".hola.org"
+
+var FALLBACK_CONF_URLS = []string{
+	"https://www.dropbox.com/s/jemizcvpmf2qb9v/cloud_failover.conf?dl=1",
+	"https://vdkd6nz8qr.s3.amazonaws.com/cloud_failover.conf",
+}
 
 var LOGIN_TEMPLATE = template.Must(template.New("LOGIN_TEMPLATE").Parse("user-uuid-{{.uuid}}-is_prem-{{.prem}}"))
 var TemporaryBanError = errors.New("temporary ban detected")
@@ -274,7 +278,8 @@ func zgettunnels(ctx context.Context,
 
 func fetchFallbackConfig(ctx context.Context) (*FallbackConfig, error) {
 	client := httpClientWithProxy(nil)
-	confRaw, err := do_req(ctx, client, "", FALLBACK_CONF_URL, nil, nil)
+	fallbackConfURL := FALLBACK_CONF_URLS[rand.New(RandomSource).Intn(len(FALLBACK_CONF_URLS))]
+	confRaw, err := do_req(ctx, client, "", fallbackConfURL, nil, nil)
 	if err != nil {
 		return nil, err
 	}
