@@ -82,7 +82,7 @@ func parse_args() CLIArgs {
 	flag.StringVar(&args.bind_address, "bind-address", "127.0.0.1:8080", "HTTP proxy listen address")
 	flag.IntVar(&args.verbosity, "verbosity", 20, "logging verbosity "+
 		"(10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical)")
-	flag.DurationVar(&args.timeout, "timeout", 30*time.Second, "timeout for network operations")
+	flag.DurationVar(&args.timeout, "timeout", 35*time.Second, "timeout for network operations")
 	flag.DurationVar(&args.rotate, "rotate", 1*time.Hour, "rotate user ID once per given period")
 	flag.DurationVar(&args.backoffInitial, "backoff-initial", 3*time.Second, "initial average backoff delay for zgettunnels (randomized by +/-50%)")
 	flag.DurationVar(&args.backoffDeadline, "backoff-deadline", 5*time.Minute, "total duration of zgettunnels method attempts")
