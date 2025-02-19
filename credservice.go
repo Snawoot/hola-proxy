@@ -20,10 +20,9 @@ func CredService(interval, timeout time.Duration,
 	var mux sync.Mutex
 	var auth_header, user_uuid string
 	auth = func() (res string) {
-		(&mux).Lock()
-		res = auth_header
-		(&mux).Unlock()
-		return
+		mux.Lock()
+		defer mux.Unlock()
+		return auth_header
 	}
 
 	tx_res, tx_err := EnsureTransaction(context.Background(), timeout, func(ctx context.Context, client *http.Client) bool {
@@ -45,6 +44,9 @@ func CredService(interval, timeout time.Duration,
 		return
 	}
 	auth_header = basic_auth_header(TemplateLogin(user_uuid), tunnels.AgentKey)
+	if interval <= 0 {
+		return
+	}
 	go func() {
 		var (
 			err       error
@@ -74,9 +76,9 @@ func CredService(interval, timeout time.Duration,
 				logger.Critical("All rotation attempts failed.")
 				continue
 			}
-			(&mux).Lock()
+			mux.Lock()
 			auth_header = basic_auth_header(TemplateLogin(user_uuid), tuns.AgentKey)
-			(&mux).Unlock()
+			mux.Unlock()
 			logger.Info("Credentials rotated successfully.")
 		}
 	}()
