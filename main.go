@@ -83,7 +83,7 @@ func parse_args() CLIArgs {
 	flag.IntVar(&args.verbosity, "verbosity", 20, "logging verbosity "+
 		"(10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical)")
 	flag.DurationVar(&args.timeout, "timeout", 35*time.Second, "timeout for network operations")
-	flag.DurationVar(&args.rotate, "rotate", 1*time.Hour, "rotate user ID once per given period")
+	flag.DurationVar(&args.rotate, "rotate", 48*time.Hour, "rotate user ID once per given period")
 	flag.DurationVar(&args.backoffInitial, "backoff-initial", 3*time.Second, "initial average backoff delay for zgettunnels (randomized by +/-50%)")
 	flag.DurationVar(&args.backoffDeadline, "backoff-deadline", 5*time.Minute, "total duration of zgettunnels method attempts")
 	flag.IntVar(&args.initRetries, "init-retries", 0, "number of attempts for initialization steps, zero for unlimited retry")
