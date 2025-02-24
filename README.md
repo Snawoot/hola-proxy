@@ -173,7 +173,7 @@ zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 | proxy | String | sets base proxy to use for all dial-outs. Format: `<http\|https\|socks5\|socks5h>://[login:password@]host[:port]` Examples: `http://user:password@192.168.1.1:3128`, `socks5://10.0.0.1:1080` |
 | proxy-type | String | proxy type (Datacenter: direct) (Residential: lum) (default "direct") |
 | resolver | String | DNS/DoH/DoT resolver to workaround Hola blocked hosts. See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format. (default "https://cloudflare-dns.com/dns-query") |
-| rotate | Duration | rotate user ID once per given period (default 1h0m0s) |
+| rotate | Duration | rotate user ID once per given period (default 48h0m0s) |
 | timeout | Duration | timeout for network operations (default 35s) |
 | user-agent | String | value of User-Agent header in requests (default "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36") |
 | verbosity | Number | logging verbosity (10 - debug, 20 - info, 30 - warning, 40 - error, 50 - critical) (default 20) |
