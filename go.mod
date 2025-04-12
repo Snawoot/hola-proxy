@@ -6,6 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/AdguardTeam/dnsproxy v0.75.2
+	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/campoy/unique v0.0.0-20180121183637-88950e537e7e
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/google/uuid v1.6.0
