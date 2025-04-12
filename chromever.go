@@ -2,14 +2,20 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
-
-	"google.golang.org/api/option"
-	"google.golang.org/api/versionhistory/v1"
 )
+
+type chromeVerResponse struct {
+	Versions [1]struct {
+		Version string `json:"version"`
+	} `json:"versions"`
+}
+
+const chromeVerURL = "https://versionhistory.googleapis.com/v1/chrome/platforms/win/channels/stable/versions?alt=json&orderBy=version+desc&pageSize=1&prettyPrint=false"
 
 func GetChromeVer(ctx context.Context, dialer ContextDialer) (string, error) {
 	if dialer == nil {
@@ -32,21 +38,26 @@ func GetChromeVer(ctx context.Context, dialer ContextDialer) (string, error) {
 		Transport: transport,
 	}
 
-	versionHistoryService, err := versionhistory.NewService(ctx, option.WithHTTPClient(httpClient))
+	req, err := http.NewRequestWithContext(ctx, "GET", chromeVerURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("unable to create version history service: %w", err)
+		return "", fmt.Errorf("chrome browser version request construction failed: %w", err)
 	}
 
-	call := versionHistoryService.Platforms.Channels.Versions.List("chrome/platforms/win/channels/stable")
-	call = call.OrderBy("version desc").PageSize(1)
-	call.Context(ctx)
-	resp, err := call.Do()
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("call to version history service failed: %w", err)
+		return "", fmt.Errorf("chrome browser version request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("chrome browser version request failed: bad status code: %d", resp.StatusCode)
 	}
 
-	if len(resp.Versions) == 0 {
-		return "", ErrNoVerData
+	dec := json.NewDecoder(resp.Body)
+	var chromeVerResp chromeVerResponse
+	if err := dec.Decode(&chromeVerResp); err != nil {
+		return "", fmt.Errorf("unable to decode chrome browser version response: %w", err)
 	}
-	return resp.Versions[0].Version, nil
+
+	return chromeVerResp.Versions[0].Version, nil
 }
