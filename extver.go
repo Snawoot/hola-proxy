@@ -86,7 +86,7 @@ func GetExtVer(ctx context.Context,
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("bad status code: %d", resp.StatusCode)
+		return "", fmt.Errorf("chrome web store: bad status code: %d", resp.StatusCode)
 	}
 
 	reader := io.LimitReader(resp.Body, 64*1024)
