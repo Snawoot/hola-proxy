@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	tls "github.com/refraction-networking/utls"
@@ -67,7 +68,7 @@ type CLIArgs struct {
 	initRetries                             int
 	initRetryInterval                       time.Duration
 	hideSNI                                 bool
-	userAgent                               string
+	userAgent                               *string
 }
 
 func parse_args() CLIArgs {
@@ -99,7 +100,12 @@ func parse_args() CLIArgs {
 		"Format: <http|https|socks5|socks5h>://[login:password@]host[:port] "+
 		"Examples: http://user:password@192.168.1.1:3128, socks5://10.0.0.1:1080")
 	flag.StringVar(&args.caFile, "cafile", "", "use custom CA certificate bundle file")
-	flag.StringVar(&args.userAgent, "user-agent", GetUserAgent(), "value of User-Agent header in requests")
+	flag.Func("user-agent",
+		"value of User-Agent header in requests. Default: User-Agent of latest stable Chrome for Windows",
+		func(s string) error {
+			args.userAgent = &s
+			return nil
+		})
 	flag.BoolVar(&args.hideSNI, "hide-SNI", true, "hide SNI in TLS sessions with proxy server")
 	flag.Parse()
 	if args.country == "" {
@@ -182,8 +188,6 @@ func run() int {
 		UpdateHolaDialer(dialer)
 	}
 
-	SetUserAgent(args.userAgent)
-
 	try := retryPolicy(args.initRetries, args.initRetryInterval, mainLogger)
 
 	if args.list_countries {
@@ -191,16 +195,48 @@ func run() int {
 	}
 
 	mainLogger.Info("hola-proxy client version %s is starting...", version)
+
+	var userAgent string
+	if args.userAgent == nil {
+		err := try("get latest version of Chrome browser", func() error {
+			ctx, cl := context.WithTimeout(context.Background(), args.timeout)
+			defer cl()
+			ver, err := GetChromeVer(ctx, dialer)
+			if err != nil {
+				return err
+			}
+			mainLogger.Info("latest Chrome version is %q", ver)
+			majorVer, _, _ := strings.Cut(ver, ".")
+			userAgent = fmt.Sprintf(
+				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s.0.0.0 Safari/537.36",
+				majorVer)
+			mainLogger.Info("discovered latest Chrome User-Agent: %q", userAgent)
+			return err
+		})
+		if err != nil {
+			mainLogger.Critical("Can't detect latest Chrome version. "+
+				"Try to specify proper user agent with -user-agent parameter. Error: %v",
+				err)
+			return 8
+		}
+	} else {
+		userAgent = *args.userAgent
+	}
+	SetUserAgent(userAgent)
+
 	if args.extVer == "" {
 		err := try("get latest version of browser extension", func() error {
 			ctx, cl := context.WithTimeout(context.Background(), args.timeout)
 			defer cl()
 			extVer, err := GetExtVer(ctx, nil, HolaExtStoreID, dialer)
-			args.extVer = extVer
+			if err == nil {
+				mainLogger.Info("discovered latest browser extension version: %s", extVer)
+				args.extVer = extVer
+			}
 			return err
 		})
 		if err != nil {
-			mainLogger.Critical("Can't detect latest API version. Try to specify -ext-ver parameter. Error: %v", err)
+			mainLogger.Critical("Can't detect latest browser extension version. Try to specify -ext-ver parameter. Error: %v", err)
 			return 8
 		}
 		mainLogger.Warning("Detected latest extension version: %q. Pass -ext-ver parameter to skip resolve and speedup startup", args.extVer)
@@ -218,7 +254,7 @@ func run() int {
 	}
 
 	var (
-		auth AuthProvider
+		auth    AuthProvider
 		tunnels *ZGetTunnelsResponse
 	)
 	err = try("run credentials service", func() error {
