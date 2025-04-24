@@ -10,7 +10,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/google/uuid v1.6.0
 	github.com/miekg/dns v1.1.65
-	github.com/refraction-networking/utls v1.6.7
+	github.com/refraction-networking/utls v1.7.0
 	golang.org/x/net v0.39.0
 )
 
