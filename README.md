@@ -7,6 +7,8 @@ By default the application listens on 127.0.0.1:8080.
 
 Application is capable to forward traffic via proxies in datacenters (flag `-proxy-type direct`, default) or via peer proxies on residental IPs (consumer ISP) in that country (flag `-proxy-type lum`).
 
+This alternative implementation ensures your internet connection is not shared with anyone else and everything is clean and safe.
+
 ---
 
 :heart: :heart: :heart:
