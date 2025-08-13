@@ -140,7 +140,7 @@ func parse_args() *CLIArgs {
 	flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or lum") // or skip but not mentioned
 	// skip would be used something like this: `./bin/hola-proxy -proxy-type skip -force-port-field 24232 -country ua.peer` for debugging
 	flag.Var(args.resolver, "resolver",
-		"comma-separated list of DNS/DoH/DoT resolvers used to lookup domain names banned by Hola. "+
+		"comma-separated list of DNS/DoH/DoT resolvers used to lookup domain names blocked by Hola. "+
 			"Supported schemes are: dns://, https://, tls://, tcp://. "+
 			"Example: https://1.1.1.1/dns-query,tls://9.9.9.9:853")
 	flag.BoolVar(&args.use_trial, "dont-use-trial", false, "use regular ports instead of trial ports") // would be nice to not show in help page
