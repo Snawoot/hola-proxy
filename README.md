@@ -174,7 +174,7 @@ zagent248.hola.org,165.22.65.3,22222,22223,22224,22225,22226,digitalocean
 | list-proxies | - | output proxy list and exit |
 | proxy | String | sets base proxy to use for all dial-outs. Format: `<http\|https\|socks5\|socks5h>://[login:password@]host[:port]` Examples: `http://user:password@192.168.1.1:3128`, `socks5://10.0.0.1:1080` |
 | proxy-type | String | proxy type (Datacenter: direct) (Residential: lum) (default "direct") |
-| resolver | String | comma-separated list of DNS/DoH/DoT resolvers used to lookup domain names blocked by Hola. Supported schemes are: dns://, https://, tls://, tcp://. (default https://1.1.1.3/dns-query,https://8.8.8.8/dns-query,https://dns.google/dns-query,https://security.cloudflare-dns.com/dns-query,https://fidelity.vm-0.com/q,https://wikimedia-dns.org/dns-query,https://dns.adguard-dns.com/dns-query,https://dns.quad9.net/dns-query,https://doh.cleanbrowsing.org/doh/adult-filter/) |
+| resolver | String | comma-separated list of DNS/DoH/DoT resolvers used to lookup domain names blocked by Hola. Supported schemes are: dns://, https://, tls://, tcp://. (default `https://1.1.1.3/dns-query,https://8.8.8.8/dns-query,https://dns.google/dns-query,https://security.cloudflare-dns.com/dns-query,https://fidelity.vm-0.com/q,https://wikimedia-dns.org/dns-query,https://dns.adguard-dns.com/dns-query,https://dns.quad9.net/dns-query,https://doh.cleanbrowsing.org/doh/adult-filter/`) |
 | rotate | Duration | rotate user ID once per given period (default 48h0m0s) |
 | timeout | Duration | timeout for network operations (default 35s) |
 | user-agent | String | value of User-Agent header in requests. Default: User-Agent of latest stable Chrome for Windows |
