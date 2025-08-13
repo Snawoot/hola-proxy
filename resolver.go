@@ -1,83 +1,140 @@
 package main
 
 import (
-	"time"
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"net/netip"
+	"net/url"
+	"strings"
 
-	"github.com/AdguardTeam/dnsproxy/upstream"
-	"github.com/miekg/dns"
+	"github.com/hashicorp/go-multierror"
+	"github.com/ncruces/go-dns"
 )
 
-type Resolver struct {
-	upstream upstream.Upstream
-}
-
-const DOT = 0x2e
-
-func NewResolver(address string, timeout time.Duration) (*Resolver, error) {
-	opts := &upstream.Options{Timeout: timeout}
-	u, err := upstream.AddressToUpstream(address, opts)
+func FromURL(u string) (*net.Resolver, error) {
+	parsed, err := url.Parse(u)
 	if err != nil {
 		return nil, err
 	}
-	return &Resolver{upstream: u}, nil
+	switch strings.ToLower(parsed.Scheme) {
+	case "", "dns":
+		host := parsed.Hostname()
+		port := parsed.Port()
+		if port == "" {
+			port = "53"
+		}
+		return NewPlainResolver(net.JoinHostPort(host, port)), nil
+	case "tcp":
+		host := parsed.Hostname()
+		port := parsed.Port()
+		if port == "" {
+			port = "53"
+		}
+		return NewTCPResolver(net.JoinHostPort(host, port)), nil
+	case "http", "https":
+		return dns.NewDoHResolver(u)
+	case "tls":
+		host := parsed.Hostname()
+		port := parsed.Port()
+		if port == "" {
+			port = "853"
+		}
+		return dns.NewDoTResolver(net.JoinHostPort(host, port))
+	default:
+		return nil, errors.New("not implemented")
+	}
 }
 
-func (r *Resolver) ResolveA(domain string) []string {
-	res := make([]string, 0)
-	if len(domain) == 0 {
-		return res
+type LookupNetIPer interface {
+	LookupNetIP(context.Context, string, string) ([]netip.Addr, error)
+}
+
+type FastResolver struct {
+	upstreams []LookupNetIPer
+}
+
+type lookupReply struct {
+	addrs []netip.Addr
+	err   error
+}
+
+func FastResolverFromURLs(urls ...string) (*FastResolver, error) {
+	resolvers := make([]LookupNetIPer, 0, len(urls))
+	for i, u := range urls {
+		res, err := FromURL(u)
+		if err != nil {
+			return nil, fmt.Errorf("unable to construct resolver #%d (%q): %w", i, u, err)
+		}
+		resolvers = append(resolvers, res)
 	}
-	if domain[len(domain)-1] != DOT {
-		domain = domain + "."
+	return NewFastResolver(resolvers...), nil
+}
+
+func NewFastResolver(resolvers ...LookupNetIPer) *FastResolver {
+	return &FastResolver{
+		upstreams: resolvers,
 	}
-	req := dns.Msg{}
-	req.Id = dns.Id()
-	req.RecursionDesired = true
-	req.Question = []dns.Question{
-		{Name: domain, Qtype: dns.TypeA, Qclass: dns.ClassINET},
+}
+
+func (r FastResolver) LookupNetIP(ctx context.Context, network, host string) ([]netip.Addr, error) {
+	ctx, cl := context.WithCancel(ctx)
+	drain := make(chan lookupReply, len(r.upstreams))
+	for _, res := range r.upstreams {
+		go func(res LookupNetIPer) {
+			addrs, err := res.LookupNetIP(ctx, network, host)
+			drain <- lookupReply{addrs, err}
+		}(res)
 	}
-	reply, err := r.upstream.Exchange(&req)
-	if err != nil {
-		return res
-	}
-	for _, rr := range reply.Answer {
-		if a, ok := rr.(*dns.A); ok {
-			res = append(res, a.A.String())
+
+	i := 0
+	var resAddrs []netip.Addr
+	var resErr error
+	for ; i < len(r.upstreams); i++ {
+		pair := <-drain
+		if pair.err != nil {
+			resErr = multierror.Append(resErr, pair.err)
+		} else {
+			cl()
+			resAddrs = pair.addrs
+			resErr = nil
+			break
 		}
 	}
-	return res
-}
-
-func (r *Resolver) ResolveAAAA(domain string) []string {
-	res := make([]string, 0)
-	if len(domain) == 0 {
-		return res
-	}
-	if domain[len(domain)-1] != DOT {
-		domain = domain + "."
-	}
-	req := dns.Msg{}
-	req.Id = dns.Id()
-	req.RecursionDesired = true
-	req.Question = []dns.Question{
-		{Name: domain, Qtype: dns.TypeAAAA, Qclass: dns.ClassINET},
-	}
-	reply, err := r.upstream.Exchange(&req)
-	if err != nil {
-		return res
-	}
-	for _, rr := range reply.Answer {
-		if a, ok := rr.(*dns.AAAA); ok {
-			res = append(res, a.AAAA.String())
+	go func() {
+		for i = i + 1; i < len(r.upstreams); i++ {
+			<-drain
 		}
-	}
-	return res
+	}()
+	return resAddrs, resErr
 }
 
-func (r *Resolver) Resolve(domain string) []string {
-	res := r.ResolveA(domain)
-	if len(res) == 0 {
-		res = r.ResolveAAAA(domain)
+func NewPlainResolver(addr string) *net.Resolver {
+	return &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return (&net.Dialer{
+				Resolver: &net.Resolver{},
+			}).DialContext(ctx, network, addr)
+		},
 	}
-	return res
+}
+
+func NewTCPResolver(addr string) *net.Resolver {
+	return &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			dnet := "tcp"
+			switch network {
+			case "udp4":
+				dnet = "tcp4"
+			case "udp6":
+				dnet = "tcp6"
+			}
+			return (&net.Dialer{
+				Resolver: &net.Resolver{},
+			}).DialContext(ctx, dnet, addr)
+		},
+	}
 }

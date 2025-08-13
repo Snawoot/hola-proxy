@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
+	"encoding/csv"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -47,6 +50,37 @@ func arg_fail(msg string) {
 	os.Exit(2)
 }
 
+type CSVArg struct {
+	values []string
+}
+
+func (a *CSVArg) String() string {
+	if len(a.values) == 0 {
+		return ""
+	}
+	buf := new(bytes.Buffer)
+	wr := csv.NewWriter(buf)
+	wr.Write(a.values)
+	wr.Flush()
+	return strings.TrimRight(buf.String(), "\n")
+}
+
+func (a *CSVArg) Set(line string) error {
+	rd := csv.NewReader(strings.NewReader(line))
+	rd.FieldsPerRecord = -1
+	rd.TrimLeadingSpace = true
+	values, err := rd.Read()
+	if err == io.EOF {
+		a.values = nil
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("unable to parse comma-separated argument: %w", err)
+	}
+	a.values = values
+	return nil
+}
+
 type CLIArgs struct {
 	extVer                                  string
 	country                                 string
@@ -56,7 +90,7 @@ type CLIArgs struct {
 	verbosity                               int
 	timeout, rotate                         time.Duration
 	proxy_type                              string
-	resolver                                string
+	resolver                                *CSVArg
 	force_port_field                        string
 	showVersion                             bool
 	proxy                                   string
@@ -71,8 +105,22 @@ type CLIArgs struct {
 	userAgent                               *string
 }
 
-func parse_args() CLIArgs {
-	var args CLIArgs
+func parse_args() *CLIArgs {
+	args := &CLIArgs{
+		resolver: &CSVArg{
+			values: []string{
+				"https://1.1.1.3/dns-query",
+				"https://8.8.8.8/dns-query",
+				"https://dns.google/dns-query",
+				"https://security.cloudflare-dns.com/dns-query",
+				"https://fidelity.vm-0.com/q",
+				"https://wikimedia-dns.org/dns-query",
+				"https://dns.adguard-dns.com/dns-query",
+				"https://dns.quad9.net/dns-query",
+				"https://doh.cleanbrowsing.org/doh/adult-filter/",
+			},
+		},
+	}
 	flag.StringVar(&args.extVer, "ext-ver", "", "extension version to mimic in requests. "+
 		"Can be obtained from https://chrome.google.com/webstore/detail/hola-vpn-the-website-unbl/gkojfkhlekighikafcpjkiklfbnlmeio")
 	flag.StringVar(&args.force_port_field, "force-port-field", "", "force specific port field/num (example 24232 or lum)") // would be nice to not show in help page
@@ -91,9 +139,10 @@ func parse_args() CLIArgs {
 	flag.DurationVar(&args.initRetryInterval, "init-retry-interval", 5*time.Second, "delay between initialization retries")
 	flag.StringVar(&args.proxy_type, "proxy-type", "direct", "proxy type: direct or lum") // or skip but not mentioned
 	// skip would be used something like this: `./bin/hola-proxy -proxy-type skip -force-port-field 24232 -country ua.peer` for debugging
-	flag.StringVar(&args.resolver, "resolver", "https://cloudflare-dns.com/dns-query",
-		"DNS/DoH/DoT resolver to workaround Hola blocked hosts. "+
-			"See https://github.com/ameshkov/dnslookup/ for upstream DNS URL format.")
+	flag.Var(args.resolver, "resolver",
+		"comma-separated list of DNS/DoH/DoT resolvers used to lookup domain names blocked by Hola. "+
+			"Supported schemes are: dns://, https://, tls://, tcp://. "+
+			"Example: https://1.1.1.1/dns-query,tls://9.9.9.9:853")
 	flag.BoolVar(&args.use_trial, "dont-use-trial", false, "use regular ports instead of trial ports") // would be nice to not show in help page
 	flag.BoolVar(&args.showVersion, "version", false, "show program version and exit")
 	flag.StringVar(&args.proxy, "proxy", "", "sets base proxy to use for all dial-outs. "+
@@ -247,7 +296,7 @@ func run() int {
 	}
 
 	mainLogger.Info("Constructing fallback DNS upstream...")
-	resolver, err := NewResolver(args.resolver, args.timeout)
+	resolver, err := FastResolverFromURLs(args.resolver.values...)
 	if err != nil {
 		mainLogger.Critical("Unable to instantiate DNS resolver: %v", err)
 		return 6

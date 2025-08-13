@@ -19,7 +19,7 @@ type ProxyHandler struct {
 	auth          AuthProvider
 }
 
-func NewProxyHandler(dialer, requestDialer ContextDialer, auth AuthProvider, resolver *Resolver, logger *CondLogger) *ProxyHandler {
+func NewProxyHandler(dialer, requestDialer ContextDialer, auth AuthProvider, resolver LookupNetIPer, logger *CondLogger) *ProxyHandler {
 	dialer = NewRetryDialer(dialer, resolver, logger)
 	httptransport := &http.Transport{
 		Proxy: func(_ *http.Request) (*url.URL, error) {
