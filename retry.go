@@ -7,11 +7,11 @@ import (
 
 type RetryDialer struct {
 	dialer   ContextDialer
-	resolver *Resolver
+	resolver LookupNetIPer
 	logger   *CondLogger
 }
 
-func NewRetryDialer(dialer ContextDialer, resolver *Resolver, logger *CondLogger) *RetryDialer {
+func NewRetryDialer(dialer ContextDialer, resolver LookupNetIPer, logger *CondLogger) *RetryDialer {
 	return &RetryDialer{
 		dialer:   dialer,
 		resolver: resolver,
@@ -28,12 +28,15 @@ func (d *RetryDialer) DialContext(ctx context.Context, network, address string) 
 			return conn, err
 		}
 
-		ips := d.resolver.Resolve(host)
+		ips, err := d.resolver.LookupNetIP(ctx, "ip", host)
+		if err != nil {
+			return nil, err
+		}
 		if len(ips) == 0 {
-			return conn, err
+			return nil, err
 		}
 
-		return d.dialer.DialContext(ctx, network, net.JoinHostPort(ips[0], port))
+		return d.dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
 	}
 	return conn, err
 }
