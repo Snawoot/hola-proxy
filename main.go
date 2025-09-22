@@ -210,6 +210,7 @@ func run() int {
 			RootCAs: caPool,
 		})
 	}
+	SetHideSNI(args.hideSNI)
 
 	proxyFromURLWrapper := func(u *url.URL, next xproxy.Dialer) (xproxy.Dialer, error) {
 		cdialer, ok := next.(ContextDialer)
