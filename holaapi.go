@@ -398,6 +398,12 @@ func UpdateHolaTLSConfig(config *tls.Config) {
 	tlsConfig = config
 }
 
+var hideSNI bool
+
+func SetHideSNI(hide bool) {
+	hideSNI = hide
+}
+
 // Returns default http client with a proxy override
 func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 	t := &http.Transport{
@@ -428,7 +434,23 @@ func httpClientWithProxy(agent *FallbackAgent) *http.Client {
 		if tlsConfig != nil {
 			cfg = *tlsConfig
 		}
-		cfg.ServerName = host
+		if !hideSNI {
+			cfg.ServerName = host
+		} else {
+			cfg.InsecureSkipVerify = true
+			cfg.VerifyConnection = func(cs tls.ConnectionState) error {
+				opts := x509.VerifyOptions{
+					DNSName:       host,
+					Intermediates: x509.NewCertPool(),
+					Roots:         cfg.RootCAs,
+				}
+				for _, cert := range cs.PeerCertificates[1:] {
+					opts.Intermediates.AddCert(cert)
+				}
+				_, err := cs.PeerCertificates[0].Verify(opts)
+				return err
+			}
+		}
 		tlsConn := tls.UClient(conn, &cfg, tls.HelloAndroid_11_OkHttp)
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
 			conn.Close()
