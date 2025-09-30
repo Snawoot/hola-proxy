@@ -9,27 +9,6 @@ Application is capable to forward traffic via proxies in datacenters (flag `-pro
 
 This alternative implementation ensures your internet connection is not shared with anyone else and everything is clean and safe.
 
----
-
-:heart: :heart: :heart:
-
-You can say thanks to the author by donations to these wallets:
-
-- ETH: `0xB71250010e8beC90C5f9ddF408251eBA9dD7320e`
-- BTC:
-  - Legacy: `1N89PRvG1CSsUk9sxKwBwudN6TjTPQ1N8a`
-  - Segwit: `bc1qc0hcyxc000qf0ketv4r44ld7dlgmmu73rtlntw`
-
----
-
-## Mirrors
-
-IPFS git mirror:
-
-```
-git clone https://ipfs.io/ipns/k51qzi5uqu5dkrgx0hozpy1tlggw5o0whtquyrjlc6pprhvbmczr6qtj4ocrv0 hola-proxy
-```
-
 ## Features
 
 * Cross-platform (Windows/Mac OS/Linux/Android (via shell)/\*BSD)
